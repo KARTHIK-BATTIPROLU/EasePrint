@@ -22,7 +22,7 @@ from app.models import (
     PrintReadyRequest,
 )
 from app.dynamodb_client import DynamoDBClient
-from app.bedrock_agent import BedrockPrintAgent
+from app.bedrock_agent import BedrockPrintAgent, get_bedrock_agent
 from app.pricing import calculate_hyderabad_price
 from app.session_store import session_store
 from app.s3_client import s3_client
@@ -261,7 +261,7 @@ async def enqueue_job(job: JobIn):
             logger.warning(f"Failed to enqueue job to ARQ: {exc}")
     else:
         logger.info(f"ARQ pool not connected. Running asynchronous agent task for job {job.job_id}.")
-        agent = BedrockPrintAgent()
+        agent = get_bedrock_agent()
         asyncio.create_task(agent.process_job(job_dict))
 
     return JobEnqueueResponse(
@@ -419,7 +419,7 @@ async def student_chat(req: ChatRequest):
     }
 
     # 3. Process with Bedrock Agent
-    agent = BedrockPrintAgent()
+    agent = get_bedrock_agent()
     result = await agent.process_job(job_data)
 
     reply_text = result.get("reply", "Your request has been received.")

@@ -1,3 +1,4 @@
+import asyncio
 import json
 import logging
 import re
@@ -18,6 +19,7 @@ def clean_model_output(text: str) -> str:
     if not text:
         return ""
     cleaned = re.sub(r"<thinking>[\s\S]*?</thinking>", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^(?:Student message|Student|User):\s*.*?\n", "", cleaned, flags=re.IGNORECASE)
     cleaned = re.sub(r"^\s*[\r\n]+", "", cleaned)
     return cleaned.strip()
 
@@ -202,19 +204,17 @@ You assist students with document print orders, price estimates, binding options
 
 {rag_context}
 
-FORMATTING & CONVERSATIONAL INSTRUCTIONS:
-1. Always address the student's question directly and politely:
-   - If they ask for a price (e.g., "Price for 10 pages color?", "How much for spiral binding?"), calculate or quote the exact price immediately.
-   - If they ask about store hours, pickup counters, or rules, use the knowledge base above.
-   - Do NOT talk about internal processes, sending questions, or background tools.
-2. Structure your response with clean spacing:
-   - Use double line breaks between distinct thoughts and paragraphs.
-   - Use bold markdown for key figures, amounts in ₹, and options.
-   - Use bullet points (- ) with clean line breaks for itemized lists or price breakdowns.
-3. When the student is ready to confirm a print order with pages, copies, color, and sides:
-   - Call calculate_hyderabad_price and set_print_requirements.
-   - Provide a cheerful summary of their order and let them know it has been queued.
-4. IMPORTANT: Never output <thinking> tags to the student. Speak directly in clean, helpful, professional language.
+CRITICAL RULES FOR CONCISENESS & SPEED:
+1. STRICT LENGTH: Maximum 2 TO 3 LINES TOTAL per response. Be fast, direct, and punchy.
+2. NEVER repeat or echo the student's question, message, or file details.
+3. NEVER show step-by-step arithmetic or derivations.
+4. State the final rate and total price in bold ₹ immediately.
+5. Example format:
+   **2 copies B&W Double-sided (10 pages):**
+   • 10 sheets total @ ₹3.00/sheet
+   • **Total: ₹30.00**
+6. If answering general store questions/policies, give a direct 1-sentence answer.
+7. NEVER output <thinking> tags. Speak directly to the student.
 """
 
     async def _run_heuristic_evaluator(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -268,13 +268,9 @@ FORMATTING & CONVERSATIONAL INSTRUCTIONS:
         })
 
         reply = (
-            f"Understood! Your order for **{copies} cop{'y' if copies == 1 else 'ies'}** "
-            f"({pricing.color_mode.upper()}, {pricing.sides.capitalize()}) is confirmed.\n\n"
-            f"**Price Breakdown:**\n"
-            f"- Document: **{pages} page(s)**\n"
-            f"- Rate: **₹{pricing.rate_per_unit:.2f}** per unit\n"
-            f"- Total: **₹{pricing.total_amount_inr:.2f}**\n\n"
-            f"Job **#{job_id}** is now queued for printing at {config.store_name}."
+            f"**{copies} cop{'y' if copies == 1 else 'ies'} ({pricing.color_mode.upper()}, {pricing.sides.capitalize()}) - {pages} pages**\n"
+            f"• Rate: **₹{pricing.rate_per_unit:.2f}** per unit\n"
+            f"• **Total: ₹{pricing.total_amount_inr:.2f}** (Job #{job_id} queued)"
         )
         return {"reply": reply, "pricing": pricing.model_dump(), "needs_clarification": False}
 
@@ -283,8 +279,8 @@ FORMATTING & CONVERSATIONAL INSTRUCTIONS:
         job_id = job_data["job_id"]
         logger.info(f"Processing chat/job {job_id} with Bedrock Agent")
 
-        # Ensure job exists in DynamoDB
-        await self.dynamodb_client.create_or_init_job(job_data)
+        # Concurrently ensure job exists in DynamoDB without blocking initial Bedrock reasoning
+        asyncio.create_task(self.dynamodb_client.create_or_init_job(job_data))
 
         if not self.is_bedrock_configured or not self.bedrock:
             logger.info("Bedrock not connected to live AWS; executing rule-based evaluator.")
@@ -295,21 +291,20 @@ FORMATTING & CONVERSATIONAL INSTRUCTIONS:
         file_name = job_data.get("file_name")
         pages = job_data.get("pages", 1)
 
-        user_content = f"Student message: \"{msg_text}\"\n"
-        if file_name:
-            user_content += f"Attached document: {file_name} ({pages} pages)\n"
-        user_content += "Please respond to the student directly with helpful formatting, line breaks, and accurate price calculations."
+        doc_info = f" (Attached file: {file_name}, {pages} pages)" if file_name else (f" ({pages} pages)" if pages and pages > 1 else "")
+        user_content = f"{msg_text}{doc_info}\n(Under 3 lines direct answer with total ₹. No arithmetic steps.)"
 
         messages = [{"role": "user", "content": [{"text": user_content}]}]
         last_pricing = None
 
         try:
-            for iteration in range(5):
+            for iteration in range(3):
                 response = self.bedrock.converse(
                     modelId=self.model_id,
                     system=[{"text": system_prompt}],
                     messages=messages,
                     toolConfig={"tools": BEDROCK_TOOLS},
+                    inferenceConfig={"maxTokens": 90, "temperature": 0.1},
                 )
                 output_msg = response["output"]["message"]
                 messages.append(output_msg)
@@ -323,7 +318,7 @@ FORMATTING & CONVERSATIONAL INSTRUCTIONS:
                         return {"reply": cleaned, "pricing": last_pricing, "needs_clarification": False}
                     elif last_pricing:
                         return {
-                            "reply": f"Your order is calculated: **{last_pricing.get('summary')}**. Total: **₹{last_pricing.get('total_amount_inr'):.2f}**.",
+                            "reply": f"**{last_pricing.get('summary')}**\n• **Total: ₹{last_pricing.get('total_amount_inr'):.2f}**",
                             "pricing": last_pricing,
                             "needs_clarification": False,
                         }
@@ -347,18 +342,24 @@ FORMATTING & CONVERSATIONAL INSTRUCTIONS:
             # If loop finished after tools without final text
             if last_pricing:
                 return {
-                    "reply": (
-                        f"Here is your price estimate:\n\n"
-                        f"• **{last_pricing.get('summary')}**\n"
-                        f"• **Grand Total:** ₹{last_pricing.get('total_amount_inr', 0):.2f}\n\n"
-                        f"Would you like me to queue this print job for you?"
-                    ),
+                    "reply": f"**{last_pricing.get('summary')}**\n• **Total: ₹{last_pricing.get('total_amount_inr'):.2f}**",
                     "pricing": last_pricing,
                     "needs_clarification": False,
                 }
 
-            return {"reply": "I'm here to help! Please let me know your print requirements or questions.", "needs_clarification": False}
+            return {"reply": "I'm ready! Please share your document or print specifications.", "needs_clarification": False}
 
         except ClientError as exc:
             logger.error(f"Bedrock converse call failed: {exc}. Falling back to heuristic.")
             return await self._run_heuristic_evaluator(job_data)
+
+
+_agent_instance: Optional[BedrockPrintAgent] = None
+
+
+def get_bedrock_agent() -> BedrockPrintAgent:
+    """Returns singleton BedrockPrintAgent instance to reuse AWS connection pools."""
+    global _agent_instance
+    if _agent_instance is None:
+        _agent_instance = BedrockPrintAgent()
+    return _agent_instance
