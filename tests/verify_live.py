@@ -1,4 +1,4 @@
-﻿import sys
+import sys
 sys.stdout.reconfigure(encoding="utf-8")
 import urllib.request
 import json
@@ -64,7 +64,8 @@ with urllib.request.urlopen(f"{base}/jobs/{job_id}") as r:
     job_details = json.loads(r.read().decode("utf-8"))
     print(f"Verified Job: {job_details['job_id']}")
     print(f"Channel: {job_details['source_channel']} | Sender: {job_details['sender_name']}")
-    print(f"Total Amount in DynamoDB: ₹{job_details.get('total_amount_inr', 0):.2f}")
+    total_amt = job_details.get('total_amount_inr') or 0.0
+    print(f"Total Amount in DynamoDB: ₹{float(total_amt):.2f}")
 
 # 6. Staff List Jobs
 print("\n[6] Testing GET /jobs (Staff Command Dashboard Queue)")

@@ -87,6 +87,8 @@ if os.path.exists("frontend/dist/assets"):
     app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
 
 @app.get("/", include_in_schema=False)
+@app.get("/student", include_in_schema=False)
+@app.get("/staff", include_in_schema=False)
 async def serve_index():
     if os.path.exists("frontend/dist/index.html"):
         return FileResponse("frontend/dist/index.html")
