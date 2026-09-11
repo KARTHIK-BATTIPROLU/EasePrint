@@ -178,25 +178,35 @@ async def enqueue_job(job: JobIn):
     pool: Optional[ArqRedis] = getattr(app.state, "arq_pool", None)
     job_dict = job.model_dump()
 
+    # 1. Immediately record in DynamoDB so staff and student see it right away!
+    dynamo = DynamoDBClient()
+    job_dict["status"] = "queued"
+    await dynamo.create_or_init_job(job_dict)
+
+    # 2. Update explicit requirements if provided
+    update_fields = {}
+    for k in ["pages", "copies", "color_mode", "sides", "binding", "paper_type", "total_amount_inr", "pricing_summary", "status"]:
+        if job_dict.get(k) is not None:
+            update_fields[k] = job_dict[k]
+    if update_fields:
+        await dynamo.update_job_fields(job.job_id, update_fields)
+
+    # 3. Push to ARQ queue or run agent
     if pool:
         try:
             await pool.enqueue_job("process_job", job_dict)
             logger.info(f"Enqueued job {job.job_id} into ARQ task queue.")
         except Exception as exc:
-            logger.error(f"Failed to enqueue job {job.job_id}: {exc}")
-            raise HTTPException(
-                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to enqueue job: {str(exc)}",
-            )
+            logger.warning(f"Failed to enqueue job to ARQ: {exc}")
     else:
-        logger.warning(f"ARQ pool not connected. Running immediate processing for job {job.job_id}.")
+        logger.info(f"ARQ pool not connected. Running asynchronous agent task for job {job.job_id}.")
         agent = BedrockPrintAgent()
-        await agent.process_job(job_dict)
+        asyncio.create_task(agent.process_job(job_dict))
 
     return JobEnqueueResponse(
         job_id=job.job_id,
         status="queued",
-        message="Print job accepted and enqueued for agent processing."
+        message="Print job accepted and recorded in DynamoDB."
     )
 
 

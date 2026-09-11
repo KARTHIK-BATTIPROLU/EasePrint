@@ -128,6 +128,14 @@ export default function StudentPortal() {
       file_url: fileData.file_url,
       file_name: fileData.file_name,
       received_at: new Date().toISOString(),
+      pages: pages,
+      copies: copies,
+      color_mode: colorMode,
+      sides: sides,
+      binding: binding,
+      paper_type: paperType,
+      total_amount_inr: pricing?.total_amount_inr || 0,
+      pricing_summary: pricing?.summary || "",
     };
 
     try {

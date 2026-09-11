@@ -191,7 +191,31 @@ export default function StaffDashboard() {
           </div>
           <div className="flex-1 overflow-y-auto space-y-3 pr-1">
             {columns.received.map((job) => (
-              <JobCard key={job.job_id} job={job} />
+              <JobCard
+                key={job.job_id}
+                job={job}
+                actionButton={
+                  <div className="space-y-1.5 mt-2">
+                    <button
+                      onClick={async () => {
+                        await updateJobStatus(job.job_id, "queued", "Staff manual override to queued");
+                        loadJobs();
+                      }}
+                      className="w-full py-1.5 px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
+                    >
+                      <Check className="w-3.5 h-3.5" />
+                      <span>Approve & Queue</span>
+                    </button>
+                    <button
+                      onClick={() => handleSimulatePrint(job.job_id)}
+                      className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
+                    >
+                      <Play className="w-3.5 h-3.5 fill-current" />
+                      <span>Print Directly</span>
+                    </button>
+                  </div>
+                }
+              />
             ))}
             {columns.received.length === 0 && <EmptyColumn text="No pending inquiries" />}
           </div>

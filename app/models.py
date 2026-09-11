@@ -1,4 +1,4 @@
-﻿from enum import Enum
+from enum import Enum
 from typing import Optional, Any, Dict, List
 from pydantic import BaseModel, Field
 from app.pricing import PricingBreakdown
@@ -58,6 +58,16 @@ class JobIn(BaseModel):
     file_url: Optional[str] = Field(default=None, description="Storage URL of file (e.g. S3 link)")
     file_name: Optional[str] = Field(default=None, description="Name of uploaded file")
     received_at: Optional[str] = Field(default=None, description="ISO 8601 timestamp string")
+    pages: Optional[int] = Field(default=None, description="Number of pages")
+    copies: Optional[int] = Field(default=None, description="Number of copies")
+    color_mode: Optional[str] = Field(default=None, description="Color or bw")
+    sides: Optional[str] = Field(default=None, description="Single or double")
+    binding: Optional[str] = Field(default=None, description="Binding type")
+    paper_type: Optional[str] = Field(default=None, description="Standard or glossy")
+    total_amount_inr: Optional[float] = Field(default=None, description="Total amount in INR")
+    pricing_summary: Optional[str] = Field(default=None, description="Pricing summary breakdown")
+
+    model_config = {"extra": "allow"}
 
 
 class PrintRequirements(BaseModel):

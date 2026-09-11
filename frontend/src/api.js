@@ -1,4 +1,4 @@
-const BASE_URL = "http://localhost:8000";
+const BASE_URL = "";
 
 export async function calculatePrice(specs) {
   const res = await fetch(`${BASE_URL}/pricing/calculate`, {
