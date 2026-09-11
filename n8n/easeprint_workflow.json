@@ -1,0 +1,620 @@
+﻿{
+  "name": "EasePrint - Omnichannel AI Print Intake & Fulfillment",
+  "nodes": [
+    {
+      "parameters": {
+        "multipleMethods": true,
+        "path": "whatsapp",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "302c9fdd-6f73-4a0d-8cb3-6b92506aa884",
+      "name": "WhatsApp Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 0],
+      "webhookId": "ea3a5c88-ffb6-4133-9342-14f7b6733b38"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "verify",
+              "leftValue": "={{ $json.query['hub.mode'] }}",
+              "rightValue": "subscribe",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cad19beb-dc74-407b-b4fe-1d530502aa3e",
+      "name": "Is Meta Verification",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [224, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.query['hub.challenge'] }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "839642d9-ce57-4f65-9702-d0701f63ff1f",
+      "name": "Respond Challenge",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [448, 0]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "EVENT_RECEIVED",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "018a5ca5-4d7e-4694-8d5e-9446e8e8a9b5",
+      "name": "Ack WhatsApp 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [448, 192]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const body = item.json.body || item.json || {};\n  let msg = {};\n  let contactName = 'Anonymous';\n  try {\n    const value = body.entry[0].changes[0].value;\n    msg = (value.messages && value.messages[0]) || {};\n    contactName = (value.contacts && value.contacts[0] && value.contacts[0].profile && value.contacts[0].profile.name) || 'Anonymous';\n  } catch (e) {}\n  const type = msg.type || 'text';\n  let mediaId = null;\n  let fileName = null;\n  let text = '';\n  if (type === 'text') {\n    text = (msg.text && msg.text.body) || '';\n  } else if (type === 'document') {\n    mediaId = (msg.document && msg.document.id) || null;\n    fileName = (msg.document && msg.document.filename) || 'uploaded_file.pdf';\n    text = (msg.document && msg.document.caption) || '';\n  } else if (type === 'image') {\n    mediaId = (msg.image && msg.image.id) || null;\n    fileName = 'uploaded_image.jpg';\n    text = (msg.image && msg.image.caption) || '';\n  }\n  out.push({ json: {\n    source_channel: 'whatsapp',\n    sender_id: String(msg.from || ''),\n    sender_name: contactName,\n    message_text: text,\n    media_id: mediaId,\n    has_media: !!mediaId,\n    file_name: fileName,\n  } });\n}\nreturn out;"
+      },
+      "id": "415c53ee-0815-4936-aae8-3c5b5ead4678",
+      "name": "Extract WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [672, 192]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "media",
+              "leftValue": "={{ $json.has_media }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "010d2501-f4af-4590-99a1-56683cd647a4",
+      "name": "WhatsApp Has Media",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [896, 192]
+    },
+    {
+      "parameters": {
+        "url": "=https://graph.facebook.com/v18.0/{{ $json.media_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {}
+      },
+      "id": "1e854174-6da4-4b49-aedb-0d99113596a4",
+      "name": "Get WhatsApp Media URL",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1120, 128]
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "whatsAppApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "51202578-0c50-448a-aeeb-abdc183c40c0",
+      "name": "Download WhatsApp Media",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.5,
+      "position": [1344, 128],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nconst exItems = $('Extract WhatsApp').all();\nconst inItems = $input.all();\nfor (let i = 0; i < inItems.length; i++) {\n  const ex = ((exItems[i] && exItems[i].json) || (exItems[0] && exItems[0].json) || {});\n  const item = inItems[i];\n  const hasFile = !!(item.binary && item.binary.data);\n  out.push({ json: {\n    source_channel: 'whatsapp',\n    sender_id: ex.sender_id,\n    sender_name: ex.sender_name || 'Anonymous',\n    message_text: ex.message_text || '',\n    has_file: hasFile,\n    file_name: hasFile ? (ex.file_name || 'uploaded_file.pdf') : null,\n    received_at: new Date().toISOString(),\n  }, binary: item.binary });\n}\nreturn out;"
+      },
+      "id": "4228c9ea-f0a2-4da3-94fb-82148cc82ec1",
+      "name": "Normalize WhatsApp",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 192]
+    },
+    {
+      "parameters": {
+        "updates": ["message"],
+        "additionalFields": { "download": true }
+      },
+      "id": "2c2b11dd-41b3-4feb-b0f0-f0cf50f3ed97",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.5,
+      "position": [1344, 432],
+      "webhookId": "32d1e3df-7d78-47f0-8ee1-639099fa3a04"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const msg = item.json.message || {};\n  const chat = msg.chat || {};\n  const from = msg.from || {};\n  const hasFile = !!(item.binary && item.binary.data);\n  let fileName = null;\n  if (hasFile) {\n    fileName = (item.binary.data && item.binary.data.fileName) || (msg.document && msg.document.file_name) || 'uploaded_file.pdf';\n  }\n  out.push({ json: {\n    source_channel: 'telegram',\n    sender_id: String(chat.id || from.id || ''),\n    sender_name: [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Anonymous',\n    message_text: msg.text || msg.caption || '',\n    has_file: hasFile,\n    file_name: fileName,\n    received_at: new Date().toISOString(),\n  }, binary: item.binary });\n}\nreturn out;"
+      },
+      "id": "8efe670d-6639-4590-a39e-1779852efec9",
+      "name": "Normalize Telegram",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 432]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "intake/web",
+        "responseMode": "responseNode",
+        "options": { "binaryPropertyName": "data" }
+      },
+      "id": "edbb74ce-ffdc-4f4d-b328-86474802c276",
+      "name": "Web Portal Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [1344, 624],
+      "webhookId": "8dc1559f-0539-415e-9b78-fb83db9ac69d"
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const body = item.json.body || item.json || {};\n  const hasFile = !!(item.binary && item.binary.data);\n  out.push({ json: {\n    source_channel: 'web',\n    sender_id: String(body.sessionId || body.session_id || ''),\n    sender_name: body.name || body.sender_name || 'Anonymous',\n    message_text: body.message || body.message_text || body.caption || '',\n    has_file: hasFile,\n    file_name: hasFile ? ((item.binary.data && item.binary.data.fileName) || body.file_name || 'uploaded_file.pdf') : null,\n    received_at: new Date().toISOString(),\n  }, binary: item.binary });\n}\nreturn out;"
+      },
+      "id": "351f59ea-4278-403a-a79c-01311845a51f",
+      "name": "Normalize Web",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1568, 624]
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const j = item.json || {};\n  out.push({ json: {\n    ...j,\n    job_id: 'EP-' + $execution.id + '-' + Math.floor(Math.random() * 10000),\n    received_at: j.received_at || new Date().toISOString(),\n  }, binary: item.binary });\n}\nreturn out;"
+      },
+      "id": "7508245f-a3e8-4e0e-be29-d3d9a20c0ba3",
+      "name": "Prepare Job",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1792, 384]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "file",
+              "leftValue": "={{ $json.has_file }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0bdce574-fe76-44c7-9c51-3d498d1ecc5c",
+      "name": "Has File?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [2016, 384]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "easeprint-documents",
+        "additionalFields": {
+          "parentFolderKey": "=jobs/{{ $('Prepare Job').item.json.source_channel }}/{{ $('Prepare Job').item.json.sender_id }}"
+        }
+      },
+      "id": "abe9cbd6-b1fb-4551-b262-b60e9f880c53",
+      "name": "Upload to S3",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 2,
+      "position": [2240, 240],
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const out = [];\nconst jobItems = $('Prepare Job').all();\nconst inItems = $input.all();\nfor (let i = 0; i < inItems.length; i++) {\n  const job = ((jobItems[i] && jobItems[i].json) || (jobItems[0] && jobItems[0].json) || {});\n  const cur = inItems[i].json || {};\n  let fileS3Url = '';\n  if (cur.Location) fileS3Url = cur.Location;\n  else if (cur.Key) fileS3Url = 'https://easeprint-documents.s3.amazonaws.com/' + cur.Key;\n  else if (job.file_s3_url) fileS3Url = job.file_s3_url;\n  out.push({ json: {\n    job_id: job.job_id,\n    source_channel: job.source_channel,\n    sender_id: job.sender_id,\n    sender_name: job.sender_name || 'Anonymous',\n    status: 'received',\n    message_text: job.message_text || '',\n    file_s3_url: fileS3Url,\n    created_at: new Date().toISOString(),\n  } });\n}\nreturn out;"
+      },
+      "id": "b4e3f8c9-028a-4280-bdf6-63ab4fa2cfa2",
+      "name": "Assemble Job Record",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2464, 384]
+    },
+    {
+      "parameters": {
+        "tableName": "EasePrintJobs",
+        "dataToSend": "autoMapInputData",
+        "additionalFields": {}
+      },
+      "id": "1c96f19c-e8b4-46cc-b7eb-4e8f1f6619f1",
+      "name": "Write DynamoDB Record",
+      "type": "n8n-nodes-base.awsDynamoDb",
+      "typeVersion": 1,
+      "position": [2880, 144]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Assemble Job Record').item.json.message_text }}",
+        "options": {
+          "systemMessage": "You are the EasePrint AI Specialist for a campus Xerox & print station in Hyderabad, Telangana. Your job is to intake student print requests, confirm print specifications, calculate accurate prices using the calculate_hyderabad_price tool, and queue confirmed jobs.\n\nHyderabad Xerox Pricing Rules:\n- A4 Black & White (Single-sided): ₹2 per page\n- A4 Black & White (Double-sided / Back-to-back): ₹3 per sheet (₹1.50 per side)\n- A4 Color Printout: ₹10 per page\n- Spiral Binding: ₹30 (up to 100 pages)\n- Soft Binding: ₹50\n- Hard Binding (Project Thesis): ₹180\n\nGuidelines:\n1. If the student hasn't specified copies, color mode (Color vs B&W), sides (Single vs Both sides), or binding, ask ONE clear clarifying question.\n2. When specifications are provided, run the calculate_hyderabad_price tool and state the itemized total in ₹ (INR).\n3. Once the student confirms, call the enqueue_and_persist_job tool to queue the job to SQS and set its DynamoDB status to 'queued', then reply confirming the order is completed with its job_id. Never fabricate prices or print specs.",
+          "maxIterations": 10
+        }
+      },
+      "id": "909615f3-ee58-44af-9224-4f3350280aad",
+      "name": "EasePrint AI Agent",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [2816, 432]
+    },
+    {
+      "parameters": {
+        "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "options": {
+          "temperature": 0.2
+        }
+      },
+      "id": "54c9c09c-6f0c-4b95-9f80-d125c6bf20b4",
+      "name": "Amazon Bedrock Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAwsBedrock",
+      "typeVersion": 1.2,
+      "position": [2688, 656]
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Assemble Job Record').item.json.source_channel }}:{{ $('Assemble Job Record').item.json.sender_id }}",
+        "contextWindowLength": 10
+      },
+      "id": "559b20a7-677c-473a-adf8-8c0278356761",
+      "name": "Session Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryBufferWindow",
+      "typeVersion": 1.4,
+      "position": [2816, 656]
+    },
+    {
+      "parameters": {
+        "description": "Calculate the exact Hyderabad Xerox/print price in INR. Provide pages (int), copies (int), color_mode (\"color\" or \"bw\"), sides (\"single\" or \"double\"), binding (\"none\"|\"spiral\"|\"soft\"|\"hard\").",
+        "jsCode": "let input = query;\nif (typeof input === 'string') {\n  try { input = JSON.parse(input); } catch (e) { input = {}; }\n}\nconst pages = parseInt(input.pages, 10) || 0;\nconst copies = parseInt(input.copies, 10) || 1;\nconst colorMode = (input.color_mode || 'bw').toLowerCase();\nconst sides = (input.sides || 'single').toLowerCase();\nconst binding = (input.binding || 'none').toLowerCase();\n\nlet perPage;\nif (colorMode === 'color') {\n  perPage = 10;\n} else if (sides === 'double') {\n  perPage = 1.5;\n} else {\n  perPage = 2;\n}\nconst pagesCost = pages * perPage;\n\nconst bindingRates = { none: 0, spiral: 30, soft: 50, hard: 180 };\nconst bindingCost = bindingRates[binding] || 0;\n\nconst perCopy = pagesCost + bindingCost;\nconst total = perCopy * copies;\n\nconst breakdown = {\n  pages: pages,\n  copies: copies,\n  color_mode: colorMode,\n  sides: sides,\n  binding: binding,\n  per_page_rate_inr: perPage,\n  pages_cost_inr: pagesCost,\n  binding_cost_inr: bindingCost,\n  per_copy_inr: perCopy,\n};\n\nreturn JSON.stringify({ currency: 'INR', total_price: total, breakdown: breakdown });",
+        "specifyInputSchema": true,
+        "schemaType": "manual",
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"pages\":{\"type\":\"integer\"},\"copies\":{\"type\":\"integer\"},\"color_mode\":{\"type\":\"string\",\"enum\":[\"color\",\"bw\"]},\"sides\":{\"type\":\"string\",\"enum\":[\"single\",\"double\"]},\"binding\":{\"type\":\"string\",\"enum\":[\"none\",\"spiral\",\"soft\",\"hard\"]}},\"required\":[\"pages\",\"copies\",\"color_mode\",\"sides\",\"binding\"]}"
+      },
+      "id": "cb86ea98-f7ae-44d4-8bb1-b1e3a3859232",
+      "name": "calculate_hyderabad_price",
+      "type": "@n8n/n8n-nodes-langchain.toolCode",
+      "typeVersion": 1.3,
+      "position": [2944, 656]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Assemble Job Record').item.json.source_channel }}",
+                    "rightValue": "whatsapp",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "whatsapp"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Assemble Job Record').item.json.source_channel }}",
+                    "rightValue": "telegram",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "telegram"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Assemble Job Record').item.json.source_channel }}",
+                    "rightValue": "web",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "web"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8bf5847a-1e8a-48ba-a2cc-509a73670642",
+      "name": "Route Reply By Channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [3280, 416]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'success', reply: $json.output, session_id: $('Assemble Job Record').item.json.sender_id, job_id: $('Assemble Job Record').item.json.job_id }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "4329902d-4686-4846-9844-b5762c10b396",
+      "name": "Respond Web Reply",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [3504, 624]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "notify-student",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "7c6957f7-f8cc-4d9f-a470-8aa52d830716",
+      "name": "Job Ready Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [0, 1040],
+      "webhookId": "c4a1735c-01ed-494c-8c8f-01269c961c23"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.target_channel }}",
+                    "rightValue": "whatsapp",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "whatsapp"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.target_channel }}",
+                    "rightValue": "telegram",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "telegram"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": false,
+                  "leftValue": "",
+                  "typeValidation": "loose",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.body.target_channel }}",
+                    "rightValue": "web",
+                    "operator": { "type": "string", "operation": "equals" }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "web"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1c7ffc45-2af3-4592-91f8-8a7813bf633b",
+      "name": "Route Completion By Channel",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [224, 1024]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({ status: 'notified', job_id: $json.body.job_id, message: '🎉 Hey! Your print order #' + $json.body.job_id + ' is ready! Total: ₹' + $json.body.total_amount + '. Please collect it from ' + $json.body.pickup_counter + '.' }) }}",
+        "options": { "responseCode": 200 }
+      },
+      "id": "3dc2d3dc-b2d2-4d32-b299-8ccac56a837c",
+      "name": "Notify Web",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [448, 1232]
+    }
+  ],
+  "connections": {
+    "WhatsApp Webhook": {
+      "main": [[{ "node": "Is Meta Verification", "type": "main", "index": 0 }]]
+    },
+    "Is Meta Verification": {
+      "main": [
+        [{ "node": "Respond Challenge", "type": "main", "index": 0 }],
+        [{ "node": "Ack WhatsApp 200", "type": "main", "index": 0 }]
+      ]
+    },
+    "Ack WhatsApp 200": {
+      "main": [[{ "node": "Extract WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Extract WhatsApp": {
+      "main": [[{ "node": "WhatsApp Has Media", "type": "main", "index": 0 }]]
+    },
+    "WhatsApp Has Media": {
+      "main": [
+        [{ "node": "Get WhatsApp Media URL", "type": "main", "index": 0 }],
+        [{ "node": "Normalize WhatsApp", "type": "main", "index": 0 }]
+      ]
+    },
+    "Get WhatsApp Media URL": {
+      "main": [[{ "node": "Download WhatsApp Media", "type": "main", "index": 0 }]]
+    },
+    "Download WhatsApp Media": {
+      "main": [[{ "node": "Normalize WhatsApp", "type": "main", "index": 0 }]]
+    },
+    "Normalize WhatsApp": {
+      "main": [[{ "node": "Prepare Job", "type": "main", "index": 0 }]]
+    },
+    "Telegram Trigger": {
+      "main": [[{ "node": "Normalize Telegram", "type": "main", "index": 0 }]]
+    },
+    "Normalize Telegram": {
+      "main": [[{ "node": "Prepare Job", "type": "main", "index": 0 }]]
+    },
+    "Web Portal Webhook": {
+      "main": [[{ "node": "Normalize Web", "type": "main", "index": 0 }]]
+    },
+    "Normalize Web": {
+      "main": [[{ "node": "Prepare Job", "type": "main", "index": 0 }]]
+    },
+    "Prepare Job": {
+      "main": [[{ "node": "Has File?", "type": "main", "index": 0 }]]
+    },
+    "Has File?": {
+      "main": [
+        [{ "node": "Upload to S3", "type": "main", "index": 0 }],
+        [{ "node": "Assemble Job Record", "type": "main", "index": 0 }]
+      ]
+    },
+    "Upload to S3": {
+      "main": [[{ "node": "Assemble Job Record", "type": "main", "index": 0 }]]
+    },
+    "Assemble Job Record": {
+      "main": [
+        [{ "node": "Write DynamoDB Record", "type": "main", "index": 0 }],
+        [{ "node": "EasePrint AI Agent", "type": "main", "index": 0 }]
+      ]
+    },
+    "EasePrint AI Agent": {
+      "main": [[{ "node": "Route Reply By Channel", "type": "main", "index": 0 }]]
+    },
+    "Amazon Bedrock Chat Model": {
+      "ai_languageModel": [[{ "node": "EasePrint AI Agent", "type": "ai_languageModel", "index": 0 }]]
+    },
+    "Session Memory": {
+      "ai_memory": [[{ "node": "EasePrint AI Agent", "type": "ai_memory", "index": 0 }]]
+    },
+    "calculate_hyderabad_price": {
+      "ai_tool": [[{ "node": "EasePrint AI Agent", "type": "ai_tool", "index": 0 }]]
+    },
+    "Route Reply By Channel": {
+      "main": [
+        [],
+        [],
+        [{ "node": "Respond Web Reply", "type": "main", "index": 0 }]
+      ]
+    },
+    "Job Ready Webhook": {
+      "main": [[{ "node": "Route Completion By Channel", "type": "main", "index": 0 }]]
+    },
+    "Route Completion By Channel": {
+      "main": [
+        [],
+        [],
+        [{ "node": "Notify Web", "type": "main", "index": 0 }]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}

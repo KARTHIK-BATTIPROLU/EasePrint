@@ -1,4 +1,4 @@
-﻿import asyncio
+import asyncio
 import logging
 from decimal import Decimal
 from typing import Optional, Dict, Any
@@ -227,3 +227,20 @@ class DynamoDBClient:
                 raise
 
         return await asyncio.to_thread(_sync_put)
+
+    async def list_all_jobs(self, limit: int = 50) -> list:
+        """List all jobs for the Staff Dashboard."""
+        if not self.is_configured or not self.table:
+            return list(_mock_dynamodb_store.values())
+
+        def _sync_scan():
+            try:
+                response = self.table.scan(Limit=limit)
+                items = response.get("Items", [])
+                return [_deserialize_from_dynamodb(i) for i in items]
+            except ClientError as exc:
+                logger.error(f"Error scanning DynamoDB jobs: {exc}")
+                return []
+
+        return await asyncio.to_thread(_sync_scan)
+

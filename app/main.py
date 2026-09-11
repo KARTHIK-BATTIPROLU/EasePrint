@@ -1,9 +1,12 @@
-﻿import datetime
+import datetime
 import logging
+import os
+import shutil
 from contextlib import asynccontextmanager
-from typing import Optional
-from fastapi import FastAPI, HTTPException, status
+from typing import Optional, List, Dict, Any
+from fastapi import FastAPI, HTTPException, status, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from mangum import Mangum
 from arq.connections import create_pool, ArqRedis
 import httpx
@@ -26,12 +29,15 @@ from app.s3_client import s3_client
 
 logger = logging.getLogger("print_queue_service.api")
 
+# Ensure uploads directory exists
+os.makedirs("uploads", exist_ok=True)
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage lifecycle resources (ElastiCache / Redis ARQ pool and DynamoDB check)."""
     logger.info("Starting up EasePrint AWS-Native Backend...")
-    
+
     # 1. Connect to ElastiCache / Redis ARQ pool
     try:
         app.state.arq_pool = await create_pool(settings.redis_settings)
@@ -70,6 +76,21 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from fastapi.responses import FileResponse
+
+# Mount local uploads for preview/download
+app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
+
+# Mount React frontend dist if built
+if os.path.exists("frontend/dist/assets"):
+    app.mount("/assets", StaticFiles(directory="frontend/dist/assets"), name="assets")
+
+@app.get("/", include_in_schema=False)
+async def serve_index():
+    if os.path.exists("frontend/dist/index.html"):
+        return FileResponse("frontend/dist/index.html")
+    return {"message": "EasePrint API active. Run frontend on port 3000 or build with npm run build."}
 
 
 @app.get("/health", tags=["Health"])
@@ -115,6 +136,31 @@ async def calculate_price(req: PricingRequest):
 
 
 @app.post(
+    "/upload",
+    summary="Upload Document and Extract Page Count",
+    tags=["Uploads"],
+)
+async def upload_file(file: UploadFile = File(...)):
+    """Handles direct file upload from web student interface, saving and detecting page count."""
+    safe_name = f"{int(datetime.datetime.now().timestamp())}_{file.filename}"
+    file_path = os.path.join("uploads", safe_name)
+
+    content = await file.read()
+    with open(file_path, "wb") as f:
+        f.write(content)
+
+    pages = s3_client.extract_page_count_from_bytes(content)
+
+    return {
+        "file_name": file.filename,
+        "saved_as": safe_name,
+        "file_url": f"http://localhost:8000/uploads/{safe_name}",
+        "pages": pages,
+        "size_bytes": len(content),
+    }
+
+
+@app.post(
     "/jobs",
     response_model=JobEnqueueResponse,
     status_code=status.HTTP_202_ACCEPTED,
@@ -150,6 +196,49 @@ async def enqueue_job(job: JobIn):
         status="queued",
         message="Print job accepted and enqueued for agent processing."
     )
+
+
+@app.get(
+    "/jobs",
+    summary="List all print jobs for Staff Dashboard",
+    tags=["Jobs"],
+)
+async def list_jobs():
+    """Returns all jobs from DynamoDB for the Staff Command Dashboard."""
+    dynamo = DynamoDBClient()
+    items = await dynamo.list_all_jobs(limit=100)
+
+    # Format items
+    results = []
+    for record in items:
+        requirements = None
+        if any(k in record for k in ["copies", "color_mode", "paper_size", "sides", "binding"]):
+            requirements = {
+                "copies": record.get("copies"),
+                "color_mode": record.get("color_mode"),
+                "paper_size": record.get("paper_size"),
+                "sides": record.get("sides"),
+                "binding": record.get("binding"),
+                "pages": record.get("pages"),
+            }
+        results.append({
+            "job_id": record.get("job_id"),
+            "status": record.get("status", "received"),
+            "source_channel": record.get("source_channel"),
+            "sender_id": record.get("sender_id"),
+            "sender_name": record.get("sender_name", "Anonymous"),
+            "message_text": record.get("message_text"),
+            "file_url": record.get("file_url"),
+            "file_name": record.get("file_name"),
+            "requirements": requirements,
+            "pricing": record.get("pricing"),
+            "total_amount_inr": float(record["total_amount_inr"]) if record.get("total_amount_inr") is not None else None,
+            "pickup_counter": record.get("pickup_counter", "Counter 1"),
+            "created_at": record.get("created_at") or record.get("received_at"),
+            "notes": record.get("notes"),
+        })
+
+    return results
 
 
 @app.get(
@@ -205,6 +294,25 @@ async def get_job_status(job_id: str):
         received_at=record.get("received_at"),
         raw_fields=record,
     )
+
+
+@app.patch(
+    "/jobs/{job_id}/status",
+    summary="Update Job Status (Staff / Virtual Printer)",
+    tags=["Jobs"],
+)
+async def update_status(job_id: str, payload: Dict[str, Any]):
+    """Allows staff or virtual printer simulation to advance status."""
+    new_status = payload.get("status")
+    if not new_status:
+        raise HTTPException(status_code=400, detail="status field is required.")
+
+    dynamo = DynamoDBClient()
+    success = await dynamo.update_job_status(job_id, new_status, notes=payload.get("notes"))
+    if not success:
+        raise HTTPException(status_code=404, detail="Failed to update job status.")
+
+    return {"success": True, "job_id": job_id, "status": new_status}
 
 
 @app.post(
