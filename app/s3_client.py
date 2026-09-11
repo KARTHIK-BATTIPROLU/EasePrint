@@ -1,4 +1,4 @@
-﻿import io
+import io
 import asyncio
 import logging
 from typing import Optional, Dict, Any
@@ -77,6 +77,23 @@ class S3Client:
         except Exception as exc:
             logger.warning(f"Could not parse PDF page count from bytes: {exc}")
             return 1
+
+    async def delete_object(self, s3_key: str) -> bool:
+        """Permanently shred/delete document from S3 for student privacy."""
+        if not self.is_configured or not self.s3:
+            logger.info(f"[Mock S3] Permanently deleted object: {s3_key}")
+            return True
+
+        def _sync_delete():
+            try:
+                self.s3.delete_object(Bucket=self.bucket, Key=s3_key)
+                logger.info(f"Permanently shredded S3 object '{s3_key}' from bucket '{self.bucket}'")
+                return True
+            except ClientError as exc:
+                logger.warning(f"Failed to delete S3 object {s3_key}: {exc}")
+                return False
+
+        return await asyncio.to_thread(_sync_delete)
 
 
 s3_client = S3Client()

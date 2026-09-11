@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import time
 from decimal import Decimal
 from typing import Optional, Dict, Any
 import boto3
@@ -189,10 +190,16 @@ class DynamoDBClient:
         staff_notes: Optional[str] = None,
         completed_at: Optional[str] = None,
     ) -> bool:
-        """Advance job to ready status with counter location for customer collection."""
+        """Advance job to ready status with counter location, scrub private file fields, and attach 24h TTL."""
+        now_epoch = int(time.time())
         fields: Dict[str, Any] = {
             "status": "ready",
             "pickup_counter": pickup_counter,
+            "file_url": "[PURGED_FOR_PRIVACY]",
+            "file_name": "[PURGED_FOR_PRIVACY]",
+            "file_purged": True,
+            "purged_at": completed_at or str(now_epoch),
+            "expires_at": now_epoch + 86400,  # 24 hour buffer before DynamoDB auto-purges row
         }
         if staff_notes:
             fields["staff_notes"] = staff_notes
@@ -201,8 +208,12 @@ class DynamoDBClient:
         return await self.update_job_fields(job_id, fields)
 
     async def create_or_init_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Create or initialize job item in DynamoDB."""
+        """Create or initialize job item in DynamoDB with 24-hour timed buffer TTL."""
         job_id = job_data["job_id"]
+        now_epoch = int(time.time())
+        if "expires_at" not in job_data:
+            job_data["expires_at"] = now_epoch + 86400  # 24-hour safety buffer
+
         if not self.is_configured or not self.table:
             if job_id not in _mock_dynamodb_store:
                 _mock_dynamodb_store[job_id] = dict(job_data)

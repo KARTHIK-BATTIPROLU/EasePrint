@@ -405,7 +405,7 @@ function JobCard({ job, actionButton }) {
         <span className="font-extrabold text-slate-900">
           ₹{(job.total_amount_inr || job.pricing?.total_amount_inr || 0).toFixed(2)}
         </span>
-        {job.file_url && (
+        {job.file_url && job.file_url !== "[PURGED_FOR_PRIVACY]" ? (
           <a
             href={job.file_url}
             target="_blank"
@@ -415,6 +415,10 @@ function JobCard({ job, actionButton }) {
             <span>View Doc</span>
             <ExternalLink className="w-3 h-3" />
           </a>
+        ) : (
+          <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded flex items-center space-x-1">
+            <span>🔒 File Shredded</span>
+          </span>
         )}
       </div>
 

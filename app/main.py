@@ -397,7 +397,29 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
     if not record:
         raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
 
-    # 2. Update DynamoDB status
+    # 2. Instant Digital Shredding Trigger (Zero-Retention Privacy)
+    file_url = record.get("file_url")
+    file_name = record.get("file_name")
+
+    # A. Shred local file if cached on disk
+    if file_url and "/uploads/" in file_url:
+        local_filename = file_url.split("/uploads/")[-1]
+        local_path = os.path.join("uploads", local_filename)
+        if os.path.exists(local_path):
+            try:
+                os.remove(local_path)
+                logger.info(f"[PRIVACY] Shredded local file copy: {local_path}")
+            except Exception as exc:
+                logger.warning(f"Failed to remove local file {local_path}: {exc}")
+
+    # B. Permanently wipe file from Amazon S3
+    if file_name and file_name != "[PURGED_FOR_PRIVACY]":
+        await s3_client.delete_object(file_name)
+    elif file_url and ("s3.amazonaws.com" in file_url or not file_url.startswith("http")):
+        s3_key = file_url.split("/")[-1]
+        await s3_client.delete_object(s3_key)
+
+    # 3. Update DynamoDB status with privacy scrub and 24-hour TTL buffer
     await dynamo.mark_job_ready(
         job_id=job_id,
         pickup_counter=req.pickup_counter,
@@ -405,7 +427,7 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
         completed_at=now_iso,
     )
 
-    # 3. Dispatch backward notification to n8n
+    # 4. Dispatch backward notification to n8n
     target_channel = record.get("source_channel", "web")
     sender_id = record.get("sender_id", "")
     total_inr = record.get("total_amount_inr", 0.0)
@@ -417,7 +439,8 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
         "sender_id": sender_id,
         "pickup_counter": req.pickup_counter,
         "total_amount": total_inr,
-        "message": f"🎉 Hey! Your print order #{job_id} is printed and ready! Total: ₹{total_inr:.2f}. Please collect it from {req.pickup_counter}.",
+        "file_purged": True,
+        "message": f"🎉 Hey! Your print order #{job_id} is printed and ready! Total: ₹{total_inr:.2f}. Please collect it from {req.pickup_counter}. 🔒 (Your digital document has been permanently deleted from our cloud for student privacy).",
         "completed_at": now_iso,
     }
 

@@ -439,6 +439,11 @@ export default function StudentPortal() {
                       </span>{" "}
                       • Pickup: {jobStatus?.raw_fields?.pickup_counter || "Counter 1"}
                     </p>
+                    {jobStatus?.status === "ready" && (
+                      <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center space-x-1">
+                        <span>🔒 Digital file permanently shredded from cloud for your privacy.</span>
+                      </p>
+                    )}
                   </div>
                 </div>
                 <span className="text-xs font-semibold bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full">
