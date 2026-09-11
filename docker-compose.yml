@@ -1,7 +1,8 @@
 ﻿version: "3.8"
 
 services:
-  redis:
+  # Emulates Amazon ElastiCache for Redis
+  elasticache-redis:
     image: redis:7-alpine
     container_name: easeprint-redis
     ports:
@@ -15,6 +16,7 @@ services:
       timeout: 3s
       retries: 5
 
+  # Emulates Amazon DynamoDB
   dynamodb-local:
     image: amazon/dynamodb-local:latest
     container_name: easeprint-dynamodb
@@ -33,15 +35,19 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://elasticache-redis:6379/0
+      - ELASTICACHE_REDIS_URL=redis://elasticache-redis:6379/0
       - DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
       - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=mock_key
-      - AWS_SECRET_ACCESS_KEY=mock_secret
+      - AWS_ACCESS_KEY_ID=mock_access_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret_key
+      - BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
+      - BEDROCK_REGION=us-east-1
+      - S3_BUCKET_NAME=easeprint-documents
     env_file:
       - .env
     depends_on:
-      redis:
+      elasticache-redis:
         condition: service_healthy
       dynamodb-local:
         condition: service_started
@@ -52,15 +58,19 @@ services:
     container_name: easeprint-arq-worker
     command: arq app.worker.WorkerSettings
     environment:
-      - REDIS_URL=redis://redis:6379/0
+      - REDIS_URL=redis://elasticache-redis:6379/0
+      - ELASTICACHE_REDIS_URL=redis://elasticache-redis:6379/0
       - DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
       - AWS_REGION=us-east-1
-      - AWS_ACCESS_KEY_ID=mock_key
-      - AWS_SECRET_ACCESS_KEY=mock_secret
+      - AWS_ACCESS_KEY_ID=mock_access_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret_key
+      - BEDROCK_MODEL_ID=anthropic.claude-3-5-sonnet-20241022-v2:0
+      - BEDROCK_REGION=us-east-1
+      - S3_BUCKET_NAME=easeprint-documents
     env_file:
       - .env
     depends_on:
-      redis:
+      elasticache-redis:
         condition: service_healthy
       dynamodb-local:
         condition: service_started

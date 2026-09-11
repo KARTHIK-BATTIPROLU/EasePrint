@@ -1,52 +1,68 @@
-﻿import logging
+﻿import datetime
+import logging
 from contextlib import asynccontextmanager
 from typing import Optional
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from mangum import Mangum
 from arq.connections import create_pool, ArqRedis
+import httpx
 from app.config import settings
-from app.models import JobIn, JobEnqueueResponse, JobDetailResponse
+from app.models import (
+    JobIn,
+    JobEnqueueResponse,
+    JobDetailResponse,
+    PricingRequest,
+    PricingBreakdown,
+    ChatRequest,
+    ChatResponse,
+    PrintReadyRequest,
+)
 from app.dynamodb_client import DynamoDBClient
+from app.bedrock_agent import BedrockPrintAgent
+from app.pricing import calculate_hyderabad_price
+from app.session_store import session_store
+from app.s3_client import s3_client
 
 logger = logging.getLogger("print_queue_service.api")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Manage lifecycle resources (Redis ARQ pool and DynamoDB initialization)."""
-    logger.info("Starting up print-queue-service FastAPI application...")
+    """Manage lifecycle resources (ElastiCache / Redis ARQ pool and DynamoDB check)."""
+    logger.info("Starting up EasePrint AWS-Native Backend...")
     
-    # 1. Connect to Redis ARQ pool
+    # 1. Connect to ElastiCache / Redis ARQ pool
     try:
         app.state.arq_pool = await create_pool(settings.redis_settings)
-        logger.info("Connected to Redis ARQ pool successfully.")
+        logger.info("Connected to ARQ Redis / ElastiCache pool successfully.")
     except Exception as exc:
-        logger.error(f"Failed to connect to Redis ARQ pool: {exc}")
+        logger.error(f"Failed to connect to Redis pool: {exc}")
         app.state.arq_pool = None
 
-    # 2. Ensure DynamoDB table exists (especially for DynamoDB Local)
+    # 2. Verify / provision DynamoDB table
     try:
-        dynamo_client = DynamoDBClient()
-        await dynamo_client.ensure_table_exists()
+        dynamo = DynamoDBClient()
+        await dynamo.ensure_table_exists()
     except Exception as exc:
-        logger.warning(f"Could not initialize DynamoDB table automatically: {exc}")
+        logger.warning(f"Could not auto-provision DynamoDB table: {exc}")
 
     yield
 
-    logger.info("Shutting down print-queue-service FastAPI application...")
+    logger.info("Shutting down EasePrint Backend...")
     if hasattr(app.state, "arq_pool") and app.state.arq_pool:
         await app.state.arq_pool.close()
-        logger.info("Closed Redis ARQ pool connection.")
+        logger.info("Closed ARQ Redis pool.")
 
 
 app = FastAPI(
-    title="EasePrint Print Queue Service",
-    description="Asynchronous multi-channel print queue processor powered by FastAPI, ARQ, DynamoDB, and Claude Agent",
-    version="1.0.0",
+    title="EasePrint Cloud Services",
+    description="AWS-Native Print Queue Service powered by Bedrock, ElastiCache, DynamoDB, S3, and ARQ",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
-# Enable CORS for React frontend (Student View & Staff Dashboard)
+# Enable CORS for Web Student Portal and Staff Dashboard
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,7 +74,7 @@ app.add_middleware(
 
 @app.get("/health", tags=["Health"])
 async def health_check():
-    """Healthcheck endpoint verifying service status, Redis, and DynamoDB."""
+    """Healthcheck verifying ElastiCache / Redis, DynamoDB, and Bedrock status."""
     redis_connected = False
     if hasattr(app.state, "arq_pool") and app.state.arq_pool:
         try:
@@ -69,12 +85,33 @@ async def health_check():
 
     return {
         "status": "healthy",
-        "service": "print-queue-service",
+        "service": "EasePrint-AWS-Backend",
         "redis_connected": redis_connected,
-        "database": "DynamoDB",
+        "database": "Amazon DynamoDB",
         "table": settings.DYNAMODB_TABLE_NAME,
-        "environment": "production" if not settings.DEBUG else "debug"
+        "storage": "Amazon S3",
+        "bucket": settings.S3_BUCKET_NAME,
+        "ai_engine": "Amazon Bedrock (Claude 3.5 Sonnet)",
+        "model_id": settings.BEDROCK_MODEL_ID,
     }
+
+
+@app.post(
+    "/pricing/calculate",
+    response_model=PricingBreakdown,
+    summary="Instant Hyderabad Print Pricing Calculator",
+    tags=["Pricing"],
+)
+async def calculate_price(req: PricingRequest):
+    """Calculate instant price estimate using Hyderabad campus Xerox rates."""
+    return calculate_hyderabad_price(
+        pages=req.pages,
+        copies=req.copies,
+        color_mode=req.color_mode,
+        sides=req.sides,
+        binding=req.binding,
+        paper_type=req.paper_type,
+    )
 
 
 @app.post(
@@ -86,12 +123,11 @@ async def health_check():
 )
 async def enqueue_job(job: JobIn):
     """
-    Receives normalized print job from external n8n workflow, validates payload,
-    enqueues it into Redis via ARQ, and returns immediately (<200ms).
+    Receives normalized print job from external n8n workflow or direct web upload,
+    validates payload, pushes to ARQ queue (<200ms), and returns immediately.
     """
     logger.info(f"Received job submission for job_id={job.job_id} from {job.source_channel}")
     pool: Optional[ArqRedis] = getattr(app.state, "arq_pool", None)
-
     job_dict = job.model_dump()
 
     if pool:
@@ -99,13 +135,15 @@ async def enqueue_job(job: JobIn):
             await pool.enqueue_job("process_job", job_dict)
             logger.info(f"Enqueued job {job.job_id} into ARQ task queue.")
         except Exception as exc:
-            logger.error(f"Failed to enqueue job {job.job_id} into ARQ: {exc}")
+            logger.error(f"Failed to enqueue job {job.job_id}: {exc}")
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                detail=f"Failed to enqueue job into background queue: {str(exc)}",
+                detail=f"Failed to enqueue job: {str(exc)}",
             )
     else:
-        logger.warning(f"ARQ pool not connected. Simulating ingestion for job {job.job_id}.")
+        logger.warning(f"ARQ pool not connected. Running immediate processing for job {job.job_id}.")
+        agent = BedrockPrintAgent()
+        await agent.process_job(job_dict)
 
     return JobEnqueueResponse(
         job_id=job.job_id,
@@ -117,19 +155,16 @@ async def enqueue_job(job: JobIn):
 @app.get(
     "/jobs/{job_id}",
     response_model=JobDetailResponse,
-    summary="Get status and details of a print job",
+    summary="Get status, specifications, and pricing for a print job",
     tags=["Jobs"],
 )
 async def get_job_status(job_id: str):
-    """
-    Queries DynamoDB for the record matching job_id and returns the live status
-    and details for the dashboard/frontend.
-    """
+    """Queries DynamoDB for real-time status, specifications, and pricing."""
     logger.info(f"Querying job status for job_id={job_id}")
-    dynamodb = DynamoDBClient()
+    dynamo = DynamoDBClient()
 
     try:
-        record = await dynamodb.get_record_by_job_id(job_id)
+        record = await dynamo.get_record_by_job_id(job_id)
     except Exception as exc:
         logger.error(f"Error querying job {job_id} from DynamoDB: {exc}")
         raise HTTPException(
@@ -140,17 +175,18 @@ async def get_job_status(job_id: str):
     if not record:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail=f"Print job with ID '{job_id}' was not found in DynamoDB.",
+            detail=f"Print job with ID '{job_id}' was not found.",
         )
 
-    # Extract structured requirements if present
     requirements = None
-    if any(k in record for k in ["copies", "color_mode", "paper_size", "sides"]):
+    if any(k in record for k in ["copies", "color_mode", "paper_size", "sides", "binding"]):
         requirements = {
-            "copies": int(record["copies"]) if "copies" in record and record["copies"] is not None else None,
+            "copies": record.get("copies"),
             "color_mode": record.get("color_mode"),
             "paper_size": record.get("paper_size"),
             "sides": record.get("sides"),
+            "binding": record.get("binding"),
+            "pages": record.get("pages"),
         }
 
     return JobDetailResponse(
@@ -163,7 +199,128 @@ async def get_job_status(job_id: str):
         file_url=record.get("file_url"),
         file_name=record.get("file_name"),
         requirements=requirements,
+        pricing=record.get("pricing"),
+        total_amount_inr=float(record["total_amount_inr"]) if record.get("total_amount_inr") is not None else None,
         notes=record.get("notes"),
         received_at=record.get("received_at"),
         raw_fields=record,
     )
+
+
+@app.post(
+    "/chat",
+    response_model=ChatResponse,
+    summary="Interactive Student Chat with Bedrock Agent",
+    tags=["Chat"],
+)
+async def student_chat(req: ChatRequest):
+    """
+    Direct conversational interface for the Student Web UI.
+    Uses ElastiCache / Redis for multi-turn history and Bedrock for AI reasoning.
+    """
+    logger.info(f"Received student chat message in session {req.session_id}")
+    composite_session = f"{req.source_channel}:{req.session_id}"
+
+    # 1. Record incoming user message in ElastiCache
+    await session_store.append_message(composite_session, "user", req.message)
+
+    # 2. Construct job evaluation payload
+    job_id = req.job_id or f"web-{req.session_id[-6:]}"
+    job_data = {
+        "job_id": job_id,
+        "source_channel": req.source_channel,
+        "sender_id": req.session_id,
+        "sender_name": req.sender_name or "Student",
+        "message_text": req.message,
+        "file_url": req.file_url,
+        "file_name": req.file_name,
+        "pages": req.pages or 1,
+    }
+
+    # 3. Process with Bedrock Agent
+    agent = BedrockPrintAgent()
+    result = await agent.process_job(job_data)
+
+    reply_text = result.get("reply", "Your request has been received.")
+    await session_store.append_message(composite_session, "assistant", reply_text)
+
+    pricing_data = None
+    if "pricing" in result and result["pricing"]:
+        pricing_data = PricingBreakdown(**result["pricing"])
+
+    return ChatResponse(
+        reply=reply_text,
+        session_id=req.session_id,
+        job_id=job_id,
+        status="needs_info" if result.get("needs_clarification") else "queued",
+        pricing=pricing_data,
+        needs_clarification=result.get("needs_clarification", False),
+    )
+
+
+@app.post(
+    "/jobs/{job_id}/print-ready",
+    summary="Trigger Backward Completion Alert (Prints Ready for Pickup)",
+    tags=["Fulfillment"],
+)
+async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
+    """
+    Called by Staff Dashboard or Virtual Printer when prints are done.
+    Updates DynamoDB status to 'ready' and fires backward notification to n8n relay.
+    """
+    logger.info(f"Marking job {job_id} as ready at {req.pickup_counter}")
+    dynamo = DynamoDBClient()
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+
+    # 1. Verify job exists
+    record = await dynamo.get_record_by_job_id(job_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
+
+    # 2. Update DynamoDB status
+    await dynamo.mark_job_ready(
+        job_id=job_id,
+        pickup_counter=req.pickup_counter,
+        staff_notes=req.staff_notes,
+        completed_at=now_iso,
+    )
+
+    # 3. Dispatch backward notification to n8n
+    target_channel = record.get("source_channel", "web")
+    sender_id = record.get("sender_id", "")
+    total_inr = record.get("total_amount_inr", 0.0)
+
+    outbound_payload = {
+        "event": "print_ready",
+        "job_id": job_id,
+        "target_channel": target_channel,
+        "sender_id": sender_id,
+        "pickup_counter": req.pickup_counter,
+        "total_amount": total_inr,
+        "message": f"🎉 Hey! Your print order #{job_id} is printed and ready! Total: ₹{total_inr:.2f}. Please collect it from {req.pickup_counter}.",
+        "completed_at": now_iso,
+    }
+
+    dispatched = True
+    try:
+        if settings.N8N_COMPLETION_URL:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                await client.post(settings.N8N_COMPLETION_URL, json=outbound_payload)
+                logger.info(f"Dispatched print-ready alert to n8n for job {job_id}")
+        else:
+            dispatched = False
+    except Exception as exc:
+        logger.warning(f"Failed to post completion to n8n: {exc}")
+        dispatched = False
+
+    return {
+        "success": True,
+        "job_id": job_id,
+        "status": "ready",
+        "notification_dispatched": dispatched,
+        "outbound_payload": outbound_payload,
+    }
+
+
+# Mangum ASGI Adapter for AWS Lambda / API Gateway serverless deployments
+handler = Mangum(app)
