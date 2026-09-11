@@ -480,13 +480,13 @@ export default function StudentPortal() {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs sm:text-sm leading-relaxed ${
+                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-xs sm:text-sm leading-relaxed shadow-sm ${
                     msg.role === "user"
-                      ? "bg-sky-600 text-white rounded-br-none shadow-sm"
-                      : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/60"
+                      ? "bg-sky-600 text-white rounded-br-none"
+                      : "bg-slate-100 text-slate-800 rounded-bl-none border border-slate-200/80"
                   }`}
                 >
-                  <p className="whitespace-pre-wrap">{msg.content}</p>
+                  <FormattedMessage text={msg.content} isUser={msg.role === "user"} />
                 </div>
               </div>
             ))}
@@ -542,3 +542,62 @@ export default function StudentPortal() {
     </div>
   );
 }
+
+function FormattedMessage({ text, isUser }) {
+  if (isUser) {
+    return <p className="whitespace-pre-wrap leading-relaxed">{text}</p>;
+  }
+
+  const paragraphs = (text || "").split(/\n\n+/);
+
+  return (
+    <div className="space-y-3 text-xs sm:text-sm leading-relaxed">
+      {paragraphs.map((para, pIdx) => {
+        const lines = para.split("\n");
+        const isBulletList = lines.length > 1 && lines.every((line) => line.trim().startsWith("•") || line.trim().startsWith("-") || line.trim().startsWith("*") || line.trim().startsWith("·"));
+
+        if (isBulletList) {
+          return (
+            <ul key={pIdx} className="space-y-1.5 pl-1 list-none my-1.5">
+              {lines.map((line, lIdx) => {
+                const cleanLine = line.replace(/^[\s•\-\*·]+/, "").trim();
+                return (
+                  <li key={lIdx} className="flex items-start space-x-2">
+                    <span className="text-sky-600 font-bold leading-5">•</span>
+                    <span className="flex-1">{renderFormattedText(cleanLine)}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          );
+        }
+
+        return (
+          <p key={pIdx} className="leading-relaxed">
+            {lines.map((line, lIdx) => (
+              <React.Fragment key={lIdx}>
+                {renderFormattedText(line)}
+                {lIdx < lines.length - 1 && <br />}
+              </React.Fragment>
+            ))}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+function renderFormattedText(str) {
+  const parts = str.split(/(\*\*.*?\*\*)/g);
+  return parts.map((part, i) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={i} className="font-bold text-slate-900">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+    return part;
+  });
+}
+

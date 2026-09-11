@@ -72,3 +72,30 @@ export async function markJobReady(jobId, pickupCounter = "Counter 1", staffNote
   if (!res.ok) throw new Error("Failed to mark job ready");
   return res.json();
 }
+
+export async function fetchCustomizations() {
+  const res = await fetch(`${BASE_URL}/customizations`);
+  if (!res.ok) throw new Error("Failed to load store customizations");
+  return res.json();
+}
+
+export async function saveCustomizations(config) {
+  const res = await fetch(`${BASE_URL}/customizations`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(config),
+  });
+  if (!res.ok) throw new Error("Failed to save store customizations");
+  return res.json();
+}
+
+export async function uploadKnowledgeFile(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${BASE_URL}/customizations/upload-knowledge`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error("Failed to upload knowledge document");
+  return res.json();
+}

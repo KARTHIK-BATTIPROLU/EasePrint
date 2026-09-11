@@ -14,8 +14,23 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Phone,
+  Settings,
+  UploadCloud,
+  X,
+  FileCheck,
+  Save,
+  BookOpen,
+  Tag,
+  Sparkles,
 } from "lucide-react";
-import { fetchAllJobs, updateJobStatus, markJobReady } from "../api";
+import {
+  fetchAllJobs,
+  updateJobStatus,
+  markJobReady,
+  fetchCustomizations,
+  saveCustomizations,
+  uploadKnowledgeFile,
+} from "../api";
 
 export default function StaffDashboard() {
   const [jobs, setJobs] = useState([]);
@@ -23,6 +38,7 @@ export default function StaffDashboard() {
   const [filterChannel, setFilterChannel] = useState("all");
   const [activePrinting, setActivePrinting] = useState({}); // { jobId: progressPercent }
   const [notificationLog, setNotificationLog] = useState([]);
+  const [showCustomizations, setShowCustomizations] = useState(false);
 
   // Fetch all jobs
   const loadJobs = async () => {
@@ -137,19 +153,29 @@ export default function StaffDashboard() {
 
       {/* Filter Tabs & Refresh */}
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-          <span className="text-xs font-bold text-slate-400 px-2 uppercase tracking-wider">Channel:</span>
-          {["all", "whatsapp", "telegram", "web"].map((c) => (
-            <button
-              key={c}
-              onClick={() => setFilterChannel(c)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                filterChannel === c ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              {c === "all" ? "All Channels" : c}
-            </button>
-          ))}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+            <span className="text-xs font-bold text-slate-400 px-2 uppercase tracking-wider">Channel:</span>
+            {["all", "whatsapp", "telegram", "web"].map((c) => (
+              <button
+                key={c}
+                onClick={() => setFilterChannel(c)}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                  filterChannel === c ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                {c === "all" ? "All Channels" : c}
+              </button>
+            ))}
+          </div>
+
+          <button
+            onClick={() => setShowCustomizations(true)}
+            className="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-500/20"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5" />
+            <span>Customizations & Prices</span>
+          </button>
         </div>
 
         <button
@@ -336,6 +362,12 @@ export default function StaffDashboard() {
           </div>
         </div>
       </div>
+
+      <CustomizationsModal
+        isOpen={showCustomizations}
+        onClose={() => setShowCustomizations(false)}
+        onSaved={loadJobs}
+      />
     </div>
   );
 }
@@ -424,6 +456,342 @@ function JobCard({ job, actionButton }) {
 
       {/* Optional action button */}
       {actionButton}
+    </div>
+  );
+}
+
+function CustomizationsModal({ isOpen, onClose, onSaved }) {
+  const [activeTab, setActiveTab] = useState("pricing");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMsg, setUploadMsg] = useState("");
+  const [config, setConfig] = useState(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      loadConfig();
+    }
+  }, [isOpen]);
+
+  const loadConfig = async () => {
+    setLoading(true);
+    try {
+      const data = await fetchCustomizations();
+      setConfig(data);
+    } catch (e) {
+      console.error("Failed to load customizations:", e);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePriceChange = (field, val) => {
+    setConfig((prev) => ({
+      ...prev,
+      pricing: {
+        ...prev.pricing,
+        [field]: parseFloat(val) || 0,
+      },
+    }));
+  };
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await saveCustomizations(config);
+      onSaved?.();
+      onClose();
+    } catch (e) {
+      alert("Failed to save customizations: " + e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setUploadMsg("");
+    try {
+      const res = await uploadKnowledgeFile(file);
+      setUploadMsg(`Extracted ${res.extracted_chars} characters from ${res.filename} and added to AI context.`);
+      await loadConfig();
+    } catch (e) {
+      setUploadMsg("Upload failed: " + e.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+      <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+        {/* Header */}
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center shadow-inner">
+              <SlidersHorizontal className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight">Store AI Customizations & Pricing</h2>
+              <p className="text-xs text-slate-500">Live configuration updated across Bedrock AI and Hyderabad rate calculator</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex border-b border-slate-200 bg-white px-6">
+          <button
+            onClick={() => setActiveTab("pricing")}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center space-x-2 ${
+              activeTab === "pricing"
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Tag className="w-3.5 h-3.5" />
+            <span>Pricing Matrix & Rules</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("context")}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center space-x-2 ${
+              activeTab === "context"
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <BookOpen className="w-3.5 h-3.5" />
+            <span>Business Context & RAG Docs</span>
+          </button>
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+          {loading ? (
+            <div className="py-12 text-center text-slate-400 text-xs flex items-center justify-center space-x-2">
+              <RefreshCw className="w-4 h-4 animate-spin text-indigo-600" />
+              <span>Loading store configuration...</span>
+            </div>
+          ) : activeTab === "pricing" ? (
+            <div className="space-y-5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">A4 B&W Single-sided (₹/page)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={config?.pricing?.bw_single ?? 2}
+                      onChange={(e) => handlePriceChange("bw_single", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">A4 B&W Double-sided (₹/sheet)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="0.5"
+                      value={config?.pricing?.bw_duplex ?? 3}
+                      onChange={(e) => handlePriceChange("bw_duplex", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">A4 Color Standard (₹/page)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="1"
+                      value={config?.pricing?.color_standard ?? 10}
+                      onChange={(e) => handlePriceChange("color_standard", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">A4 Color Glossy (₹/page)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="1"
+                      value={config?.pricing?.color_glossy ?? 15}
+                      onChange={(e) => handlePriceChange("color_glossy", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Spiral Binding (₹)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="5"
+                      value={config?.pricing?.spiral_binding ?? 30}
+                      onChange={(e) => handlePriceChange("spiral_binding", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Soft Binding (₹)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="5"
+                      value={config?.pricing?.soft_binding ?? 50}
+                      onChange={(e) => handlePriceChange("soft_binding", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Hard Project/Thesis Binding (₹)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="10"
+                      value={config?.pricing?.hard_binding ?? 180}
+                      onChange={(e) => handlePriceChange("hard_binding", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-700">Corner Stapling (₹)</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-bold">₹</span>
+                    <input
+                      type="number"
+                      step="1"
+                      value={config?.pricing?.corner_staple ?? 0}
+                      onChange={(e) => handlePriceChange("corner_staple", e.target.value)}
+                      className="w-full pl-7 pr-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700">Custom Promotions & Special Rules</label>
+                <textarea
+                  rows="3"
+                  value={config?.custom_rules || ""}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, custom_rules: e.target.value }))}
+                  placeholder="e.g. Free soft binding for orders over ₹200. Express prints available."
+                  className="w-full p-3 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Store Display Name</label>
+                <input
+                  type="text"
+                  value={config?.store_name || ""}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, store_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-xl text-xs font-bold focus:ring-2 focus:ring-indigo-500"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700">Business Context & Guidelines (AI RAG Context)</label>
+                <textarea
+                  rows="4"
+                  value={config?.business_context || ""}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, business_context: e.target.value }))}
+                  placeholder="Describe your store hours, values, pickup counters, thesis binding procedures..."
+                  className="w-full p-3 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 leading-relaxed"
+                />
+              </div>
+
+              {/* Document Uploader */}
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="text-xs font-bold text-slate-700 flex items-center justify-between">
+                  <span>Upload Knowledge Base File (PDF or TXT)</span>
+                  {uploading && <span className="text-indigo-600 animate-pulse text-[11px]">Extracting text...</span>}
+                </label>
+                <label className="border-2 border-dashed border-slate-300 hover:border-indigo-500 rounded-2xl p-6 flex flex-col items-center justify-center cursor-pointer transition-colors bg-slate-50/50 hover:bg-indigo-50/30">
+                  <input type="file" onChange={handleFileUpload} accept=".pdf,.txt,.md" className="hidden" />
+                  <UploadCloud className="w-8 h-8 text-indigo-600 mb-1.5" />
+                  <span className="font-bold text-xs text-slate-800">
+                    {uploading ? "Extracting & Ingesting Document..." : "Click or drop reference file here"}
+                  </span>
+                  <span className="text-[11px] text-slate-400 mt-0.5">Upload policy documents, rate cards, or campus xerox manuals</span>
+                </label>
+                {uploadMsg && (
+                  <p className="text-xs font-semibold text-emerald-700 bg-emerald-50 p-2 rounded-lg">{uploadMsg}</p>
+                )}
+              </div>
+
+              {/* Uploaded Documents List */}
+              {config?.uploaded_knowledge_docs?.length > 0 && (
+                <div className="space-y-2">
+                  <span className="text-xs font-bold text-slate-600 uppercase tracking-wider">Active Knowledge Documents:</span>
+                  <div className="space-y-1.5 max-h-40 overflow-y-auto">
+                    {config.uploaded_knowledge_docs.map((doc, idx) => (
+                      <div key={idx} className="flex items-center justify-between bg-slate-50 border border-slate-200 p-2.5 rounded-xl text-xs">
+                        <div className="flex items-center space-x-2 truncate max-w-[320px]">
+                          <FileText className="w-4 h-4 text-indigo-600 shrink-0" />
+                          <span className="font-semibold text-slate-800 truncate">{doc.name}</span>
+                        </div>
+                        <span className="text-[10px] text-emerald-700 bg-emerald-100 font-bold px-2 py-0.5 rounded-full shrink-0">
+                          Active in RAG
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-4 border-t border-slate-100 bg-slate-50 flex items-center justify-end space-x-3">
+          <button
+            onClick={onClose}
+            className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving}
+            className="flex items-center space-x-1.5 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-500/20 transition-all"
+          >
+            <Save className="w-3.5 h-3.5" />
+            <span>{saving ? "Saving AI Context..." : "Save & Update AI Context"}</span>
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,0 +1,17 @@
+{
+  "store_name": "EasePrint Campus Xerox & Stationery",
+  "business_context": "We are EasePrint, the premier student print and stationery center located inside the Hyderabad campus. We operate Monday through Saturday from 8:00 AM to 9:30 PM. We specialize in rapid academic printouts, thesis project binding with gold embossing, and color lab records. Corner stapling is always complimentary (free of charge). Students can pick up their orders from Counter 1 (Regular Xerox) or Counter 2 (Thesis & Binding).",
+  "pricing": {
+    "bw_single": 2.0,
+    "bw_duplex": 3.0,
+    "color_standard": 10.0,
+    "color_glossy": 15.0,
+    "spiral_binding": 30.0,
+    "soft_binding": 50.0,
+    "hard_binding": 180.0,
+    "corner_staple": 0.0
+  },
+  "uploaded_knowledge_docs": [],
+  "custom_rules": "Express turnaround under 10 minutes. For orders above ₹200, free soft binding is provided upon request.",
+  "last_updated": "2026-09-11T23:13:42.255337+00:00"
+}

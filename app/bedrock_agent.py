@@ -1,4 +1,4 @@
-﻿import json
+import json
 import logging
 import re
 from typing import Dict, Any, List, Optional
@@ -8,33 +8,25 @@ from botocore.exceptions import ClientError
 from app.config import settings
 from app.dynamodb_client import DynamoDBClient
 from app.pricing import calculate_hyderabad_price, PricingBreakdown
+from app.customizations import customizations_manager
 
 logger = logging.getLogger("print_queue_service.bedrock_agent")
 
-SYSTEM_PROMPT = """You are the EasePrint AI Specialist for a campus Xerox & print station in Hyderabad, Telangana.
-Your role is to assist students with printout orders, verify print specifications, calculate accurate prices using the calculate_hyderabad_price tool, and queue confirmed jobs.
 
-Standard Hyderabad Pricing Rules:
-- A4 B&W (Single-sided): ₹2 per page
-- A4 B&W (Double-sided / Back-to-back): ₹3 per sheet (₹1.50 per side)
-- A4 Color: ₹10 per page (Standard 75 GSM), ₹15 per page (Glossy)
-- Spiral Binding: ₹30 (up to 100 pages)
-- Soft Binding: ₹50
-- Hard Project / Thesis Binding: ₹180
-- Corner Stapling: Included (Free)
+def clean_model_output(text: str) -> str:
+    """Strips internal <thinking>...</thinking> tags and trims excess whitespace."""
+    if not text:
+        return ""
+    cleaned = re.sub(r"<thinking>[\s\S]*?</thinking>", "", text, flags=re.IGNORECASE)
+    cleaned = re.sub(r"^\s*[\r\n]+", "", cleaned)
+    return cleaned.strip()
 
-Guidelines:
-1. Review the request. If copies, color mode (color vs bw), or sides (single vs double) are missing, ask ONE clear clarifying question using ask_clarifying_question.
-2. If specs are clear, invoke calculate_hyderabad_price and explain the itemized total in INR (₹).
-3. Call set_print_requirements to save the specs and price to DynamoDB, then update_job_status to 'queued'.
-4. Never fabricate prices or print settings without checking tools.
-"""
 
 BEDROCK_TOOLS = [
     {
         "toolSpec": {
             "name": "calculate_hyderabad_price",
-            "description": "Calculates the total print and binding price using Hyderabad market rates.",
+            "description": "Calculates the total print and binding price using active campus rates.",
             "inputSchema": {
                 "json": {
                     "type": "object",
@@ -83,24 +75,6 @@ BEDROCK_TOOLS = [
                         "notes": {"type": "string", "description": "Optional status notes"}
                     },
                     "required": ["job_id", "status"]
-                }
-            }
-        }
-    },
-    {
-        "toolSpec": {
-            "name": "ask_clarifying_question",
-            "description": "Sends a clarifying question back to the student channel via n8n relay.",
-            "inputSchema": {
-                "json": {
-                    "type": "object",
-                    "properties": {
-                        "job_id": {"type": "string", "description": "Unique job ID"},
-                        "channel": {"type": "string", "description": "Source channel"},
-                        "sender_id": {"type": "string", "description": "Student phone, chat ID, or session ID"},
-                        "question_text": {"type": "string", "description": "The question to send"}
-                    },
-                    "required": ["job_id", "channel", "sender_id", "question_text"]
                 }
             }
         }
@@ -159,6 +133,8 @@ class BedrockPrintAgent:
         logger.info(f"Executing Bedrock tool '{name}' with args: {args}")
 
         if name == "calculate_hyderabad_price":
+            config = await customizations_manager.get_customizations()
+            custom_rates = config.pricing.model_dump()
             pricing = calculate_hyderabad_price(
                 pages=int(args.get("pages", 1)),
                 copies=int(args.get("copies", 1)),
@@ -166,6 +142,7 @@ class BedrockPrintAgent:
                 sides=args.get("sides", "single"),
                 binding=args.get("binding", "none"),
                 paper_type=args.get("paper_type", "standard"),
+                custom_rates=custom_rates,
             )
             return pricing.model_dump()
 
@@ -181,125 +158,98 @@ class BedrockPrintAgent:
             success = await self.dynamodb_client.update_job_status(job_id, status, notes)
             return {"success": success, "job_id": job_id, "status": status}
 
-        elif name == "ask_clarifying_question":
-            job_id = args.get("job_id")
-            channel = args.get("channel")
-            sender_id = args.get("sender_id")
-            question_text = args.get("question_text")
-
-            await self.dynamodb_client.update_job_status(
-                job_id=job_id,
-                status="needs_info",
-                notes=f"Question: {question_text}",
-            )
-
-            # Fire webhook relay
-            payload = {
-                "job_id": job_id,
-                "target_channel": channel,
-                "sender_id": sender_id,
-                "question": question_text,
-                "event": "clarification_needed",
-            }
-            dispatched = True
-            try:
-                if settings.N8N_CALLBACK_URL:
-                    await self.http_client.post(settings.N8N_CALLBACK_URL, json=payload)
-                else:
-                    dispatched = False
-            except Exception as exc:
-                logger.warning(f"Could not reach n8n callback URL: {exc}")
-                dispatched = False
-
-            return {
-                "success": True,
-                "dispatched_to_relay": dispatched,
-                "sent_to": channel,
-                "question": question_text,
-            }
-
         elif name == "set_print_requirements":
             job_id = args.get("job_id")
             pages = int(args.get("pages", 1))
             copies = int(args.get("copies", 1))
             color_mode = args.get("color_mode", "bw")
-            paper_size = args.get("paper_size", "A4")
             sides = args.get("sides", "single")
             binding = args.get("binding", "none")
 
+            config = await customizations_manager.get_customizations()
+            custom_rates = config.pricing.model_dump()
             pricing = calculate_hyderabad_price(
                 pages=pages,
                 copies=copies,
                 color_mode=color_mode,
                 sides=sides,
                 binding=binding,
+                custom_rates=custom_rates,
             )
 
-            success = await self.dynamodb_client.set_print_requirements(
-                job_id=job_id,
-                copies=copies,
-                color_mode=color_mode,
-                paper_size=paper_size,
-                sides=sides,
-                pages=pages,
-                binding=binding,
-                pricing_data=pricing.model_dump(),
-            )
-            return {"success": success, "pricing": pricing.model_dump()}
+            fields = {
+                "pages": pages,
+                "copies": copies,
+                "color_mode": color_mode,
+                "paper_size": args.get("paper_size", "A4"),
+                "sides": sides,
+                "binding": binding,
+                "total_amount_inr": pricing.total_amount_inr,
+                "pricing_summary": pricing.summary,
+            }
+            await self.dynamodb_client.update_job_fields(job_id, fields)
+            return {"success": True, "job_id": job_id, "pricing": pricing.model_dump()}
 
-        return {"error": f"Unknown tool '{name}'"}
+        return {"error": f"Tool '{name}' not recognized"}
+
+    async def _build_system_prompt(self) -> str:
+        """Build dynamic system prompt with business context and live pricing."""
+        config = await customizations_manager.get_customizations()
+        rag_context = customizations_manager.build_rag_prompt_context(config)
+
+        return f"""You are the EasePrint AI Specialist for {config.store_name}.
+You assist students with document print orders, price estimates, binding options, store policies, and general stationery questions.
+
+{rag_context}
+
+FORMATTING & CONVERSATIONAL INSTRUCTIONS:
+1. Always address the student's question directly and politely:
+   - If they ask for a price (e.g., "Price for 10 pages color?", "How much for spiral binding?"), calculate or quote the exact price immediately.
+   - If they ask about store hours, pickup counters, or rules, use the knowledge base above.
+   - Do NOT talk about internal processes, sending questions, or background tools.
+2. Structure your response with clean spacing:
+   - Use double line breaks between distinct thoughts and paragraphs.
+   - Use bold markdown for key figures, amounts in ₹, and options.
+   - Use bullet points (- ) with clean line breaks for itemized lists or price breakdowns.
+3. When the student is ready to confirm a print order with pages, copies, color, and sides:
+   - Call calculate_hyderabad_price and set_print_requirements.
+   - Provide a cheerful summary of their order and let them know it has been queued.
+4. IMPORTANT: Never output <thinking> tags to the student. Speak directly in clean, helpful, professional language.
+"""
 
     async def _run_heuristic_evaluator(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Rule-based parsing fallback with Hyderabad pricing."""
+        """Rule-based fallback evaluator when Bedrock is offline."""
         job_id = job_data["job_id"]
         text = (job_data.get("message_text") or "").lower()
-        channel = job_data.get("source_channel", "web")
-        sender_id = job_data.get("sender_id", "")
-        pages = int(job_data.get("pages", 1))
+        pages = int(job_data.get("pages") or 1)
 
-        # Check copies
-        copies_match = re.search(r"(\d+)\s*(copy|copies)", text)
-        copies = int(copies_match.group(1)) if copies_match else 1
+        copies = 1
+        m_copies = re.search(r"(\d+)\s*(?:copies|copy|sets)", text)
+        if m_copies:
+            copies = max(1, int(m_copies.group(1)))
 
-        # Check color
-        color_mode = "bw"
-        if "color" in text or "colour" in text:
-            color_mode = "color"
+        color_mode = "color" if any(w in text for w in ["color", "colour", "multicolor"]) else "bw"
+        sides = "double" if any(w in text for w in ["double", "duplex", "both sides", "two sided", "back to back"]) else "single"
 
-        # Check sides
-        sides = "single"
-        if any(w in text for w in ["double", "duplex", "both sides", "two sided", "two-sided", "back to back"]):
-            sides = "double"
-
-        # Check binding
         binding = "none"
         if "spiral" in text:
             binding = "spiral"
         elif "soft" in text:
             binding = "soft"
-        elif "hard" in text or "thesis" in text or "project" in text:
+        elif any(w in text for w in ["hard", "thesis", "project"]):
             binding = "hard"
         elif "staple" in text:
             binding = "staple"
 
-        # Check if user message is too vague
-        if len(text.strip()) < 4 and not job_data.get("file_url"):
-            question = "Hello! Please specify how many copies you need, color or B&W, and single or double-sided."
-            await self.execute_tool("ask_clarifying_question", {
-                "job_id": job_id,
-                "channel": channel,
-                "sender_id": sender_id,
-                "question_text": question
-            })
-            return {"reply": question, "needs_clarification": True}
-
-        # Calculate pricing
+        config = await customizations_manager.get_customizations()
+        custom_rates = config.pricing.model_dump()
         pricing = calculate_hyderabad_price(
             pages=pages,
             copies=copies,
             color_mode=color_mode,
             sides=sides,
             binding=binding,
+            custom_rates=custom_rates,
         )
 
         await self.execute_tool("set_print_requirements", {
@@ -318,46 +268,46 @@ class BedrockPrintAgent:
         })
 
         reply = (
-            f"Understood! Your order for {copies} cop{'y' if copies == 1 else 'ies'} "
-            f"({pricing.color_mode.upper()}, {pricing.sides.capitalize()}) is confirmed. "
-            f"{pricing.summary}. Job #{job_id} is now queued for printing."
+            f"Understood! Your order for **{copies} cop{'y' if copies == 1 else 'ies'}** "
+            f"({pricing.color_mode.upper()}, {pricing.sides.capitalize()}) is confirmed.\n\n"
+            f"**Price Breakdown:**\n"
+            f"- Document: **{pages} page(s)**\n"
+            f"- Rate: **₹{pricing.rate_per_unit:.2f}** per unit\n"
+            f"- Total: **₹{pricing.total_amount_inr:.2f}**\n\n"
+            f"Job **#{job_id}** is now queued for printing at {config.store_name}."
         )
         return {"reply": reply, "pricing": pricing.model_dump(), "needs_clarification": False}
 
     async def process_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Main entry point to evaluate and process an incoming print job."""
+        """Main entry point to evaluate and process an incoming student message or print job."""
         job_id = job_data["job_id"]
-        logger.info(f"Processing job {job_id} with Bedrock Agent")
+        logger.info(f"Processing chat/job {job_id} with Bedrock Agent")
 
         # Ensure job exists in DynamoDB
         await self.dynamodb_client.create_or_init_job(job_data)
 
-        # In local or test environments without active AWS credentials, use heuristic engine
         if not self.is_bedrock_configured or not self.bedrock:
             logger.info("Bedrock not connected to live AWS; executing rule-based evaluator.")
             return await self._run_heuristic_evaluator(job_data)
 
-        # Bedrock Converse API invocation
-        prompt = (
-            f"Review this incoming print order:\n"
-            f"Job ID: {job_id}\n"
-            f"Channel: {job_data.get('source_channel')}\n"
-            f"Sender: {job_data.get('sender_id')}\n"
-            f"Message: \"{job_data.get('message_text', '')}\"\n"
-            f"File: {job_data.get('file_name')} ({job_data.get('file_url')})\n"
-            f"Pages: {job_data.get('pages', 1)}\n\n"
-            f"Determine if print specifications (copies, color, sides) are clear. "
-            f"If unclear, ask ONE question via ask_clarifying_question. "
-            f"If clear, call calculate_hyderabad_price, set_print_requirements, and update status to 'queued'."
-        )
+        system_prompt = await self._build_system_prompt()
+        msg_text = job_data.get("message_text", "")
+        file_name = job_data.get("file_name")
+        pages = job_data.get("pages", 1)
 
-        messages = [{"role": "user", "content": [{"text": prompt}]}]
+        user_content = f"Student message: \"{msg_text}\"\n"
+        if file_name:
+            user_content += f"Attached document: {file_name} ({pages} pages)\n"
+        user_content += "Please respond to the student directly with helpful formatting, line breaks, and accurate price calculations."
+
+        messages = [{"role": "user", "content": [{"text": user_content}]}]
+        last_pricing = None
 
         try:
             for iteration in range(5):
                 response = self.bedrock.converse(
                     modelId=self.model_id,
-                    system=[{"text": SYSTEM_PROMPT}],
+                    system=[{"text": system_prompt}],
                     messages=messages,
                     toolConfig={"tools": BEDROCK_TOOLS},
                 )
@@ -366,12 +316,26 @@ class BedrockPrintAgent:
 
                 tool_requests = [c["toolUse"] for c in output_msg["content"] if "toolUse" in c]
                 if not tool_requests:
-                    text_parts = [c["text"] for c in output_msg["content"] if "text" in c]
-                    return {"reply": " ".join(text_parts), "needs_clarification": False}
+                    raw_texts = [c["text"] for c in output_msg["content"] if "text" in c]
+                    full_raw = " ".join(raw_texts)
+                    cleaned = clean_model_output(full_raw)
+                    if cleaned:
+                        return {"reply": cleaned, "pricing": last_pricing, "needs_clarification": False}
+                    elif last_pricing:
+                        return {
+                            "reply": f"Your order is calculated: **{last_pricing.get('summary')}**. Total: **₹{last_pricing.get('total_amount_inr'):.2f}**.",
+                            "pricing": last_pricing,
+                            "needs_clarification": False,
+                        }
 
                 tool_results = []
                 for tool in tool_requests:
                     result = await self.execute_tool(tool["name"], tool["input"])
+                    if tool["name"] == "calculate_hyderabad_price":
+                        last_pricing = result
+                    elif tool["name"] == "set_print_requirements" and "pricing" in result:
+                        last_pricing = result["pricing"]
+
                     tool_results.append({
                         "toolResult": {
                             "toolUseId": tool["toolUseId"],
@@ -380,7 +344,21 @@ class BedrockPrintAgent:
                     })
                 messages.append({"role": "user", "content": tool_results})
 
-            return {"reply": "Order analyzed and queued.", "needs_clarification": False}
+            # If loop finished after tools without final text
+            if last_pricing:
+                return {
+                    "reply": (
+                        f"Here is your price estimate:\n\n"
+                        f"• **{last_pricing.get('summary')}**\n"
+                        f"• **Grand Total:** ₹{last_pricing.get('total_amount_inr', 0):.2f}\n\n"
+                        f"Would you like me to queue this print job for you?"
+                    ),
+                    "pricing": last_pricing,
+                    "needs_clarification": False,
+                }
+
+            return {"reply": "I'm here to help! Please let me know your print requirements or questions.", "needs_clarification": False}
+
         except ClientError as exc:
             logger.error(f"Bedrock converse call failed: {exc}. Falling back to heuristic.")
             return await self._run_heuristic_evaluator(job_data)

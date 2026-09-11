@@ -26,6 +26,8 @@ from app.bedrock_agent import BedrockPrintAgent
 from app.pricing import calculate_hyderabad_price
 from app.session_store import session_store
 from app.s3_client import s3_client
+from app.customizations import customizations_manager, StoreCustomizations
+import io
 
 logger = logging.getLogger("print_queue_service.api")
 
@@ -126,7 +128,9 @@ async def health_check():
     tags=["Pricing"],
 )
 async def calculate_price(req: PricingRequest):
-    """Calculate instant price estimate using Hyderabad campus Xerox rates."""
+    """Calculate instant price estimate using dynamic Hyderabad campus Xerox rates."""
+    config = await customizations_manager.get_customizations()
+    custom_rates = config.pricing.model_dump()
     return calculate_hyderabad_price(
         pages=req.pages,
         copies=req.copies,
@@ -134,7 +138,64 @@ async def calculate_price(req: PricingRequest):
         sides=req.sides,
         binding=req.binding,
         paper_type=req.paper_type,
+        custom_rates=custom_rates,
     )
+
+
+@app.get("/customizations", tags=["Customizations"])
+async def get_store_customizations():
+    """Returns active store customizations, business context, knowledge base, and pricing matrix."""
+    return await customizations_manager.get_customizations()
+
+
+@app.post("/customizations", tags=["Customizations"])
+async def update_store_customizations(config: StoreCustomizations):
+    """Updates active store pricing, business context, and custom rules in DynamoDB and local storage."""
+    config.last_updated = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    return await customizations_manager.save_customizations(config)
+
+
+@app.post("/customizations/upload-knowledge", tags=["Customizations"])
+async def upload_knowledge_file(file: UploadFile = File(...)):
+    """Uploads a PDF or text file to extract knowledge and enrich Bedrock's RAG context."""
+    content_bytes = await file.read()
+    extracted_text = ""
+    filename = file.filename.lower()
+
+    if filename.endswith(".pdf"):
+        from pypdf import PdfReader
+        try:
+            reader = PdfReader(io.BytesIO(content_bytes))
+            for p in reader.pages:
+                extracted_text += (p.extract_text() or "") + "\n"
+        except Exception as e:
+            extracted_text = f"Could not extract PDF text: {e}"
+    else:
+        try:
+            extracted_text = content_bytes.decode("utf-8", errors="ignore")
+        except Exception as e:
+            extracted_text = f"Could not decode text: {e}"
+
+    cleaned_text = extracted_text.strip()[:4000]
+
+    config = await customizations_manager.get_customizations()
+    doc_entry = {
+        "name": file.filename,
+        "content": cleaned_text,
+        "uploaded_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+        "size_bytes": len(content_bytes),
+    }
+    config.uploaded_knowledge_docs = [d for d in config.uploaded_knowledge_docs if d.get("name") != file.filename]
+    config.uploaded_knowledge_docs.append(doc_entry)
+    config.last_updated = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    await customizations_manager.save_customizations(config)
+
+    return {
+        "success": True,
+        "filename": file.filename,
+        "extracted_chars": len(cleaned_text),
+        "total_docs": len(config.uploaded_knowledge_docs),
+    }
 
 
 @app.post(
