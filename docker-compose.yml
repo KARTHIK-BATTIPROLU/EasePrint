@@ -1,0 +1,71 @@
+﻿version: "3.8"
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: easeprint-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  dynamodb-local:
+    image: amazon/dynamodb-local:latest
+    container_name: easeprint-dynamodb
+    command: "-jar ApacheJMeter.jar -sharedDb -dbPath /home/dynamodblocal/data"
+    user: root
+    ports:
+      - "8001:8000"
+    volumes:
+      - dynamodb_data:/home/dynamodblocal/data
+    restart: unless-stopped
+
+  fastapi:
+    build: .
+    container_name: easeprint-fastapi
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=mock_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      dynamodb-local:
+        condition: service_started
+    restart: unless-stopped
+
+  arq_worker:
+    build: .
+    container_name: easeprint-arq-worker
+    command: arq app.worker.WorkerSettings
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
+      - AWS_REGION=us-east-1
+      - AWS_ACCESS_KEY_ID=mock_key
+      - AWS_SECRET_ACCESS_KEY=mock_secret
+    env_file:
+      - .env
+    depends_on:
+      redis:
+        condition: service_healthy
+      dynamodb-local:
+        condition: service_started
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+  dynamodb_data:

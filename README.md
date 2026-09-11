@@ -1,5 +1,5 @@
 ﻿# EasePrint 🖨️🤖
-> **Intelligent Multi-Channel Print Queue System Powered by FastAPI, Redis, ARQ, and Anthropic Claude Agent**
+> **Intelligent Multi-Channel Print Queue System Powered by FastAPI, Redis, ARQ, Amazon DynamoDB, and Anthropic Claude Agent**
 
 ---
 
@@ -8,7 +8,7 @@
 **EasePrint** is an autonomous print shop intake and queue management platform designed to streamline print requests coming from fragmented channels. Instead of students or customers waiting in line or sending unformatted files via different messaging apps without clear specifications, EasePrint provides:
 
 1. **Omnichannel Ingestion:** Connects **WhatsApp Business Cloud API**, **Telegram Bot**, and a **Web Form** through an **n8n** automation pipeline.
-2. **Automated Asset & Metadata Management:** Automatically offloads print files into **AWS S3** and records incoming orders in **Airtable**.
+2. **Automated Asset & Metadata Management:** Automatically offloads print files into **AWS S3** and persists live orders in **Amazon DynamoDB**.
 3. **Asynchronous Processing Engine:** Built with **FastAPI**, **Redis**, and **ARQ** for low-latency (<200ms) job intake and non-blocking background task distribution.
 4. **Agentic Intake Reasoning:** An **Anthropic Claude** agent equipped with tool-calling capabilities reviews incoming job descriptions. If crucial print settings (color vs. B&W, paper size, number of copies, single vs. double-sided) are missing, the agent initiates clarifying questions back to the original messaging channel before queueing the job.
 5. **Virtual Printer & Live Dashboard:** Tracks lifecycle states (`received` ➔ `needs_info` ➔ `queued` ➔ `processing` ➔ `ready` ➔ `completed`) for both customer tracking and staff fulfillment.
@@ -31,14 +31,14 @@ flowchart TD
         T3["HTTP Webhook (/intake/web)"]
         NORM["Normalize Payload & Extract Files"]
         S3UP["Upload File to AWS S3"]
-        AT_REC["Create Record in Airtable (status: received)"]
+        DB_REC["Save Item in DynamoDB (status: received)"]
         HANDOFF["POST /jobs to FastAPI Backend"]
         CB_NODE["Callback Relayer (Send Question to User)"]
     end
 
     subgraph Storage["Storage & Records"]
         S3[("AWS S3 Bucket\n(jobs/{channel}/{id}/...)")]
-        AT[("Airtable Base\n(Live Status & Metadata)")]
+        DDB[("Amazon DynamoDB\n(EasePrintJobs Table)")]
     end
 
     subgraph Backend["FastAPI & Worker Cluster"]
@@ -63,8 +63,8 @@ flowchart TD
 
     %% n8n Pipeline
     NORM --> S3UP --> S3
-    S3UP --> AT_REC --> AT
-    AT_REC --> HANDOFF --> API
+    S3UP --> DB_REC --> DDB
+    DB_REC --> HANDOFF --> API
 
     %% Backend to Queue
     API -->|Enqueue (<200ms)| REDIS
@@ -75,8 +75,8 @@ flowchart TD
     CLAUDE --> T_DETAILS & T_STATUS & T_REQ & T_ASK
 
     %% Tool Actions
-    T_DETAILS <-->|Read Details| AT
-    T_STATUS & T_REQ -->|Write Updates| AT
+    T_DETAILS <-->|Read Details| DDB
+    T_STATUS & T_REQ -->|Write Updates| DDB
     T_ASK -->|POST Callback| CB_NODE
     CB_NODE -->|Clarification Message| Clients
 ```
@@ -89,16 +89,16 @@ flowchart TD
 2. **Normalization & S3 Upload (n8n):**
    - n8n extracts sender info, text, and raw media.
    - Media file is uploaded to AWS S3 under `jobs/{source_channel}/{sender_id}/{timestamp}_{file_name}`.
-   - An Airtable row is created with status `received`.
+   - A record is saved in DynamoDB with status `received`.
 3. **Queue Ingestion (FastAPI):**
    - n8n fires a non-blocking `POST /jobs` request to FastAPI.
    - FastAPI validates the payload with Pydantic and pushes a task into Redis via ARQ in `<200ms`, returning `{"job_id": "...", "status": "queued"}`.
 4. **Intelligent Inspection (ARQ + Claude Agent):**
    - The ARQ worker spins up an Anthropic Claude session with access to four tools:
-     - `get_job_details(job_id)`
-     - `update_job_status(job_id, status, notes)`
-     - `set_print_requirements(job_id, copies, color_mode, paper_size, sides)`
-     - `ask_clarifying_question(job_id, channel, sender_id, question_text)`
+     - `get_job_details(job_id)` (queries DynamoDB)
+     - `update_job_status(job_id, status, notes)` (updates DynamoDB)
+     - `set_print_requirements(job_id, copies, color_mode, paper_size, sides)` (updates DynamoDB)
+     - `ask_clarifying_question(job_id, channel, sender_id, question_text)` (triggers callback to n8n relay)
    - **Reasoning Loop:**
      - The agent verifies whether the prompt specifies: **Copies**, **Color Mode** (Color / Grayscale), **Paper Size** (A4, A3, etc.), and **Sidedness** (Single / Double-sided).
      - **If information is missing:** Agent triggers `ask_clarifying_question`, setting status to `needs_info`. The question is posted back to n8n, which messages the customer directly on WhatsApp/Telegram/Web.
@@ -119,9 +119,12 @@ EasePrint/
 │   ├── models.py          # Pydantic schemas (JobIn, JobStatus, PrintRequirements)
 │   ├── worker.py          # ARQ WorkerSettings & task runner (process_job)
 │   ├── agent.py           # Anthropic Claude agent & tool invocation loop
-│   ├── airtable_client.py # Async Airtable client wrapper
+│   ├── dynamodb_client.py # Async DynamoDB client wrapper (supports AWS & DynamoDB Local)
 │   └── config.py          # Settings validation via Pydantic BaseSettings
-├── docker-compose.yml     # Multi-service setup: fastapi, arq_worker, redis
+├── tests/
+│   └── test_service.py    # Unit & integration test suite
+├── docker-compose.yml     # Multi-service setup: fastapi, arq_worker, redis, dynamodb-local
+├── Dockerfile             # Container image configuration
 ├── requirements.txt       # Python dependencies
 ├── .env.example           # Environment template
 └── README.md              # Documentation
@@ -148,7 +151,7 @@ EasePrint/
 ### Job Status States
 | Status | Description |
 | :--- | :--- |
-| `received` | Initial ingestion record created in Airtable |
+| `received` | Initial ingestion record created in DynamoDB |
 | `needs_info` | Claude agent identified missing print parameters; waiting for customer reply |
 | `queued` | All parameters confirmed; job is waiting in queue |
 | `processing` | Job sent to virtual/physical printer |
@@ -162,34 +165,36 @@ EasePrint/
 ### 1. Prerequisites
 - Docker & Docker Compose
 - Python 3.11+
-- Redis (optional if running via Docker)
+- AWS CLI (optional, if using managed AWS DynamoDB)
 
 ### 2. Environment Configuration
-Copy `.env.example` to `.env` and provide your credentials:
+Copy `.env.example` to `.env`:
 ```bash
 cp .env.example .env
 ```
 
-Required variables:
+Key environment variables:
 ```ini
 # Redis
 REDIS_URL=redis://redis:6379/0
 
-# Anthropic API
+# Anthropic Claude API
 ANTHROPIC_API_KEY=sk-ant-api03-...
 MODEL_NAME=claude-sonnet-4-6
 
-# Airtable
-AIRTABLE_API_KEY=pat...
-AIRTABLE_BASE_ID=app...
-AIRTABLE_TABLE_NAME=PrintJobs
+# AWS & DynamoDB
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=mock_key
+AWS_SECRET_ACCESS_KEY=mock_secret
+DYNAMODB_TABLE_NAME=EasePrintJobs
+DYNAMODB_ENDPOINT_URL=http://dynamodb-local:8000
 
 # n8n Callback Webhook
-N8N_CALLBACK_URL=https://n8n.yourdomain.com/webhook/print-clarifications
+N8N_CALLBACK_URL=http://host.docker.internal:5678/webhook/print-clarifications
 ```
 
 ### 3. Running with Docker Compose
-Start FastAPI, the ARQ background worker, and Redis in one command:
+Start FastAPI, the ARQ background worker, Redis, and DynamoDB Local in one command:
 ```bash
 docker compose up --build
 ```
@@ -197,7 +202,8 @@ docker compose up --build
 Services started:
 - `fastapi`: Serving API on `http://localhost:8000`
 - `redis`: Listening on port `6379`
-- `arq_worker`: Concurrently processing up to 10 jobs
+- `dynamodb-local`: Running on port `8001` (internal `8000`)
+- `arq_worker`: Concurrently processing background tasks
 
 ### 4. Testing Job Ingestion
 ```bash
@@ -238,23 +244,12 @@ Before running the complete system in production, configure the following extern
 3. In IAM, create a user or service role with a scoped policy granting `s3:PutObject` and `s3:GetObject` on `arn:aws:s3:::easeprint-storage/*`.
 4. Generate an Access Key ID and Secret Access Key for n8n's AWS S3 credentials.
 
-### 4. 📊 Airtable Base
-1. Create a new Airtable base named **EasePrint** with a table named **PrintJobs**.
-2. Add fields with matching names:
-   - `job_id` (Single line text / UUID)
-   - `source_channel` (Single select: `whatsapp`, `telegram`, `web`)
-   - `sender_id` (Single line text)
-   - `sender_name` (Single line text)
-   - `status` (Single select: `received`, `needs_info`, `queued`, `processing`, `ready`, `completed`)
-   - `file_url` (URL)
-   - `file_name` (Single line text)
-   - `message_text` (Long text)
-   - `copies` (Number)
-   - `color_mode` (Single select: `color`, `bw`)
-   - `paper_size` (Single select: `A4`, `A3`, `Letter`)
-   - `sides` (Single select: `single`, `double`)
-   - `received_at` (Date/Time)
-3. Generate an Airtable **Personal Access Token** with `data.records:read` and `data.records:write` scopes.
+### 4. 🗄️ Amazon DynamoDB
+1. In the AWS Management Console, navigate to **DynamoDB** -> **Tables**.
+2. Create a table named `EasePrintJobs`.
+3. Set Partition Key to `job_id` (Type: **String**).
+4. Use **On-Demand** capacity mode for autoscaling.
+5. Provide IAM credentials with `dynamodb:GetItem`, `dynamodb:PutItem`, `dynamodb:UpdateItem` to the FastAPI backend.
 
 ### 5. 🧠 Anthropic Claude API
 1. Visit [Anthropic Console](https://console.anthropic.com/).
