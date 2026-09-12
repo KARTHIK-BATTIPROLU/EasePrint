@@ -341,19 +341,31 @@ export default function Xerox3DViewer() {
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Dynamic Scroll-Driven Scaling:
-      // At top of page (scrollY = 0): small (~0.46) on the right side.
-      // When user scrolls down: increases in size (up to ~0.84) with the same ongoing animations
-      const scrollProgress = Math.min(1, Math.max(0, scrollY / 420));
-      const targetScale = initialBaseScale + scrollProgress * (isMobile ? 0.24 : 0.38);
+      // Dynamic Scroll-Driven Scaling & Trajectory:
+      // 1. Initial (scrollY = 0): small (~0.46) on the right side (x = 2.6, y = -0.10).
+      // 2. On scroll: glides into the middle slightly (x -> 0.45), enlarges somewhat (scale -> 0.72), and comes down (y -> -0.85).
+      // 3. Stays behind the entire website as user scrolls through the page.
+      const scrollRatio = Math.min(1, Math.max(0, scrollY / 650));
+      const pageScrollRatio = Math.min(1, Math.max(0, scrollY / 2200));
 
-      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.08);
+      const targetX = isMobile ? 0 : (machinePosX - scrollRatio * 2.15);
+      const targetScale = isMobile ? 0.52 : (initialBaseScale + scrollRatio * 0.26);
+      const targetY = -0.10 - scrollRatio * 0.55 - pageScrollRatio * 0.35;
+
+      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.06);
       machineGroup.scale.set(currentScale, currentScale, currentScale);
 
-      // Smooth horizontal position adjustment on scroll
-      const currentX = isMobile ? 0 : (machinePosX - scrollProgress * 0.3);
+      const baseAnimY = activeStageRef.current === 0 ? Math.sin(elapsedTime * 1.5) * 0.02 : 0;
+      const currentX = THREE.MathUtils.lerp(machineGroup.position.x, targetX, 0.06);
+      const currentY = THREE.MathUtils.lerp(machineGroup.position.y - baseAnimY, targetY, 0.06);
+
+      machineGroup.position.x = currentX;
+      machineGroup.position.y = currentY + baseAnimY;
+
       groundMesh.position.x = currentX;
+      groundMesh.position.y = currentY;
       ringMesh.position.x = currentX;
+      ringMesh.position.y = currentY + 0.01;
 
       // Scale ground shadow and ring with the machine
       const scaleFactor = currentScale / 0.7;
@@ -371,20 +383,22 @@ export default function Xerox3DViewer() {
         }
       }
 
-      // Smooth Camera & LookAt Interpolation towards Preset
+      // Camera adapts dynamically to machine movement
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
-      camera.position.lerp(targetPreset.pos, 0.05);
-      currentLookAt.lerp(targetPreset.target, 0.05);
+      const offsetX = currentX - machinePosX;
+      const offsetY = currentY - (-0.10);
+
+      const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.65, offsetY * 0.8, 0));
+      const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.85, offsetY * 0.85, 0));
+
+      camera.position.lerp(dynamicPresetPos, 0.05);
+      currentLookAt.lerp(dynamicPresetTarget, 0.05);
       camera.lookAt(currentLookAt);
 
       // Subtle Ambient Machine Rotation & Floating (Active at all sizes)
       if (activeStageRef.current === 0) {
-        machineGroup.position.x = currentX;
-        machineGroup.position.y = -0.15 + Math.sin(elapsedTime * 1.5) * 0.02;
         machineGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.06;
       } else {
-        machineGroup.position.x = currentX;
-        machineGroup.position.y = -0.15;
         machineGroup.rotation.y = 0;
       }
 
@@ -446,8 +460,8 @@ export default function Xerox3DViewer() {
         className="w-full h-full flex items-center justify-center"
       />
 
-      {/* Floating Tour Stage Status Pill */}
-      <div className="absolute top-4 right-4 sm:right-8 bg-white/85 backdrop-blur-md border border-slate-200/80 rounded-2xl px-3.5 py-1.5 shadow-md shadow-slate-200/50 flex items-center space-x-2.5 pointer-events-none z-10">
+      {/* Floating Tour Stage Status Pill (Positioned cleanly below Navbar) */}
+      <div className="absolute top-20 right-4 sm:right-8 bg-white/85 backdrop-blur-md border border-slate-200/80 rounded-2xl px-3.5 py-1.5 shadow-md shadow-slate-200/50 flex items-center space-x-2.5 pointer-events-none z-30">
         <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
           <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
@@ -458,7 +472,7 @@ export default function Xerox3DViewer() {
       </div>
 
       {/* Bottom Cinematic Tour Controls */}
-      <div className="absolute bottom-4 right-4 sm:right-8 flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-1.5 shadow-lg shadow-slate-200/50 pointer-events-auto z-10">
+      <div className="absolute bottom-4 right-4 sm:right-8 flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-1.5 shadow-lg shadow-slate-200/50 pointer-events-auto z-40">
         <button
           onClick={() => setIsTourPlaying(!isTourPlaying)}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${

@@ -81,20 +81,22 @@ export default function LandingPage({ onSelectPortal }) {
   ];
 
   return (
-    <div className="bg-white text-slate-800 min-h-screen selection:bg-sky-500 selection:text-white">
+    <div className="bg-slate-50/25 text-slate-800 min-h-screen relative selection:bg-sky-500 selection:text-white">
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION WITH 3D XEROX MACHINE (LIGHT, SCROLL-SCALED & FOCUSED)    */}
+      {/* GLOBAL FIXED 3D PRINTER BACKGROUND (BEHIND ENTIRE SITE WHILE SCROLLING)   */}
       {/* ========================================================================= */}
-      <section className="relative min-h-[580px] lg:min-h-[660px] flex items-start justify-center pt-4 pb-12 lg:pt-7 lg:pb-16 overflow-hidden border-b border-slate-200 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/50">
-        {/* Full-bleed 3D Background Layer: Behind all text, light, interactive scroll scaling & softly focused */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-80 filter blur-[0.4px] transition-all duration-700">
-          <Xerox3DViewer />
-        </div>
+      <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-75 filter blur-[0.4px]">
+        <Xerox3DViewer />
+      </div>
 
-        {/* Soft atmospheric radial gradient to ensure foreground text is crisp */}
-        <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-white/60 pointer-events-none z-[1]" />
+      {/* Atmospheric overlay to ensure foreground text is crisp across all sections */}
+      <div className="fixed inset-0 bg-gradient-to-b from-white/35 via-white/10 to-white/50 pointer-events-none z-[1]" />
 
-        {/* Foreground Content: Sitting crisply on top of the moving blurred 3D background */}
+      {/* ========================================================================= */}
+      {/* 1. HERO SECTION (TRANSPARENT FOREGROUND, 3D MODEL BEHIND ON THE RIGHT)    */}
+      {/* ========================================================================= */}
+      <section className="relative z-10 min-h-[580px] lg:min-h-[660px] flex items-start justify-center pt-4 pb-12 lg:pt-7 lg:pb-16 overflow-hidden border-b border-slate-200/80 bg-transparent">
+        {/* Foreground Content */}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-2 lg:pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Column: Main Headline, Value Prop, CTAs & Trust Badges (7 cols) */}
@@ -188,7 +190,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS (LIGHT THEME)                   */}
       {/* ========================================================================= */}
-      <section className="py-10 bg-white border-b border-slate-200">
+      <section className="relative z-10 py-10 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
@@ -218,7 +220,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 3. THE PROBLEM: WHAT ISSUES WE ARE SOLVING                                */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 bg-slate-50/70 border-b border-slate-200">
+      <section className="relative z-10 py-16 lg:py-24 bg-slate-50/65 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <span className="text-xs font-bold uppercase tracking-widest text-rose-700 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
@@ -313,7 +315,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 4. WHAT WE ARE SOLVING PARTICULARLY: THE EASEPRINT ARCHITECTURE           */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 bg-white border-b border-slate-200">
+      <section className="relative z-10 py-16 lg:py-24 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
@@ -407,7 +409,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 5. DIRECT COMPARISON MATRIX: TRADITIONAL XEROX VS EASEPRINT                */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 bg-slate-50/70 border-b border-slate-200">
+      <section className="relative z-10 py-16 lg:py-24 bg-slate-50/65 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
             <span className="text-xs font-bold uppercase tracking-widest text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
@@ -573,7 +575,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 6. WHY PEOPLE HAVE TO CHOOSE THIS PLATFORM (VALUE BY STAKEHOLDER)         */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 bg-white border-b border-slate-200">
+      <section className="relative z-10 py-16 lg:py-24 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
             <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
@@ -691,9 +693,9 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 7. INTERACTIVE SAVINGS & IMPACT CALCULATOR (LIGHT THEME)                  */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 bg-slate-50/70 border-b border-slate-200">
+      <section className="relative z-10 py-16 lg:py-24 bg-slate-50/65 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50">
+          <div className="bg-white/95 p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 backdrop-blur-sm">
             <div className="text-center max-w-2xl mx-auto mb-10">
               <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
                 Interactive ROI Tool
@@ -759,7 +761,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 8. FREQUENTLY ASKED QUESTIONS (FAQ)                                       */}
       {/* ========================================================================= */}
-      <section className="py-16 lg:py-24 bg-white border-b border-slate-200">
+      <section className="relative z-10 py-16 lg:py-24 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
             <span className="text-xs font-bold uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
@@ -801,7 +803,7 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 9. FINAL BOTTOM DUAL CTA BANNER                                           */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-700 text-center relative overflow-hidden text-white">
+      <section className="relative z-10 py-20 bg-gradient-to-r from-sky-600/90 via-indigo-600/90 to-sky-700/90 backdrop-blur-sm text-center relative overflow-hidden text-white">
         <div className="max-w-4xl mx-auto px-4 relative z-10 space-y-6">
           <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-xs font-semibold text-white">
             <Award className="w-3.5 h-3.5" />
