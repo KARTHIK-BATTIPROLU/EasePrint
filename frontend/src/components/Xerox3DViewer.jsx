@@ -128,9 +128,9 @@ export default function Xerox3DViewer() {
 
     // --- Machine Group ---
     const machineGroup = new THREE.Group();
-    // Initially small on the right side per user request; increases in size on scroll
+    // Elevated in Hero right column at scroll 0, smoothly glides into middle and descends on scroll
     machineGroup.scale.set(initialBaseScale, initialBaseScale, initialBaseScale);
-    machineGroup.position.set(machinePosX, -0.15, 0);
+    machineGroup.position.set(machinePosX, isMobile ? 0.2 : 0.82, 0);
     scene.add(machineGroup);
 
     // 1. Base Pedestal
@@ -279,15 +279,22 @@ export default function Xerox3DViewer() {
 
     const glidingPaperGeo = new THREE.BoxGeometry(0.65, 0.008, 0.9);
     const glidingPaper = new THREE.Mesh(glidingPaperGeo, paperMat);
-    glidingPaper.position.set(-0.85, 1.48, 0);
+    glidingPaper.position.set(-0.7, 1.54, 0.1);
     machineGroup.add(glidingPaper);
+    const hudLed = new THREE.PointLight(0x38bdf8, 1.8, 1.5);
+    hudLed.position.set(1.15, 2.05, 0.78);
+    machineGroup.add(hudLed);
 
-    // 8. Ground Shadow & Ring
-    const groundGeo = new THREE.PlaneGeometry(10, 10);
-    const groundMat = new THREE.ShadowMaterial({ opacity: 0.14 });
+    // Floating Ground Ambient Contact Shadow
+    const groundGeo = new THREE.CircleGeometry(2.2, 48);
+    const groundMat = new THREE.MeshBasicMaterial({
+      color: 0x0284c7,
+      transparent: true,
+      opacity: 0.12,
+    });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.position.set(machinePosX, -0.15, 0);
+    groundMesh.position.set(machinePosX, isMobile ? 0.2 : 0.82, 0);
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
@@ -300,14 +307,14 @@ export default function Xerox3DViewer() {
     });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     ringMesh.rotation.x = -Math.PI / 2;
-    ringMesh.position.set(machinePosX, -0.14, 0);
+    ringMesh.position.set(machinePosX, isMobile ? 0.21 : 0.83, 0);
     scene.add(ringMesh);
 
     // --- Studio Lighting ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.4);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.4);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
     keyLight.position.set(6, 8, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
@@ -315,18 +322,19 @@ export default function Xerox3DViewer() {
     keyLight.shadow.bias = -0.0005;
     scene.add(keyLight);
 
-    const skyRimLight = new THREE.DirectionalLight(0xbae6fd, 1.8);
+    const skyRimLight = new THREE.DirectionalLight(0xbae6fd, 2.0);
     skyRimLight.position.set(-5, 4, -4);
     scene.add(skyRimLight);
 
-    const fillLight = new THREE.DirectionalLight(0xf1f5f9, 1.4);
+    const fillLight = new THREE.DirectionalLight(0xf1f5f9, 1.6);
     fillLight.position.set(0, 4, 5);
     scene.add(fillLight);
 
-    // --- Scroll Listener for Interactive Scaling ---
-    let scrollY = window.scrollY || 0;
+    // --- Scroll Listener with Inertial Smoothing for Silky-Smooth Animation ---
+    let rawScrollY = window.scrollY || window.pageYOffset || 0;
+    let smoothScrollY = rawScrollY;
     const handleScroll = () => {
-      scrollY = window.scrollY || window.pageYOffset || 0;
+      rawScrollY = window.scrollY || window.pageYOffset || 0;
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
 
@@ -341,23 +349,50 @@ export default function Xerox3DViewer() {
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Dynamic Scroll-Driven Scaling & Trajectory:
-      // 1. Initial (scrollY = 0): small (~0.46) on the right side (x = 2.6, y = -0.10).
-      // 2. On scroll: glides into the middle slightly (x -> 0.45), enlarges somewhat (scale -> 0.72), and comes down (y -> -0.85).
-      // 3. Stays behind the entire website as user scrolls through the page.
-      const scrollRatio = Math.min(1, Math.max(0, scrollY / 650));
-      const pageScrollRatio = Math.min(1, Math.max(0, scrollY / 2200));
+      // Inertial scroll interpolation: eliminates wheel tick jumps, guaranteeing buttery smoothness
+      smoothScrollY = THREE.MathUtils.lerp(smoothScrollY, rawScrollY, 0.08);
 
-      const targetX = isMobile ? 0 : (machinePosX - scrollRatio * 2.15);
-      const targetScale = isMobile ? 0.52 : (initialBaseScale + scrollRatio * 0.26);
-      const targetY = -0.10 - scrollRatio * 0.55 - pageScrollRatio * 0.35;
+      // Smooth Bidirectional Trajectory Choreography:
+      // 1. Hero / Main Page (0 - 600px): Starts on RIGHT SIDE (x = 2.5), glides into MIDDLE (x = 0.0), scale 0.48 -> 0.68
+      // 2. Problem -> Architecture "other page" (600 - 1400px): Glides from MIDDLE (x = 0.0) back to RIGHT SIDE (x = 2.3)
+      // 3. Architecture -> Comparison / ROI (1400 - 2300px): Glides from RIGHT SIDE (x = 2.3) to MIDDLE (x = 0.0)
+      // 4. ROI -> FAQ / Footer (2300px+): Glides from MIDDLE (x = 0.0) back to RIGHT SIDE (x = 2.3)
+      // On reverse / upward scrolling, Hermite smoothstep ensures seamless reverse motion without any jerking.
+      let targetX, targetScale, targetY;
+      if (isMobile) {
+        targetX = 0;
+        targetScale = 0.52;
+        targetY = 0.1 - Math.min(1, smoothScrollY / 2000) * 0.45;
+      } else {
+        if (smoothScrollY <= 600) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 600);
+          targetX = THREE.MathUtils.lerp(2.5, 0.0, t);
+          targetScale = THREE.MathUtils.lerp(0.48, 0.68, t);
+          targetY = THREE.MathUtils.lerp(0.82, -0.15, t);
+        } else if (smoothScrollY <= 1400) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 600, 1400);
+          targetX = THREE.MathUtils.lerp(0.0, 2.3, t);
+          targetScale = THREE.MathUtils.lerp(0.68, 0.62, t);
+          targetY = THREE.MathUtils.lerp(-0.15, -0.38, t);
+        } else if (smoothScrollY <= 2300) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 1400, 2300);
+          targetX = THREE.MathUtils.lerp(2.3, 0.0, t);
+          targetScale = THREE.MathUtils.lerp(0.62, 0.68, t);
+          targetY = THREE.MathUtils.lerp(-0.38, -0.55, t);
+        } else {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 2300, 3200);
+          targetX = THREE.MathUtils.lerp(0.0, 2.3, t);
+          targetScale = THREE.MathUtils.lerp(0.68, 0.62, t);
+          targetY = THREE.MathUtils.lerp(-0.55, -0.70, t);
+        }
+      }
 
-      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.06);
+      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.08);
       machineGroup.scale.set(currentScale, currentScale, currentScale);
 
       const baseAnimY = activeStageRef.current === 0 ? Math.sin(elapsedTime * 1.5) * 0.02 : 0;
-      const currentX = THREE.MathUtils.lerp(machineGroup.position.x, targetX, 0.06);
-      const currentY = THREE.MathUtils.lerp(machineGroup.position.y - baseAnimY, targetY, 0.06);
+      const currentX = THREE.MathUtils.lerp(machineGroup.position.x, targetX, 0.08);
+      const currentY = THREE.MathUtils.lerp(machineGroup.position.y - baseAnimY, targetY, 0.08);
 
       machineGroup.position.x = currentX;
       machineGroup.position.y = currentY + baseAnimY;
@@ -386,13 +421,13 @@ export default function Xerox3DViewer() {
       // Camera adapts dynamically to machine movement
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
       const offsetX = currentX - machinePosX;
-      const offsetY = currentY - (-0.10);
+      const offsetY = currentY - 0.82;
 
-      const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.65, offsetY * 0.8, 0));
-      const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.85, offsetY * 0.85, 0));
+      const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.55, offsetY * 0.35, 0));
+      const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.75, offsetY * 0.45, 0));
 
-      camera.position.lerp(dynamicPresetPos, 0.05);
-      currentLookAt.lerp(dynamicPresetTarget, 0.05);
+      camera.position.lerp(dynamicPresetPos, 0.06);
+      currentLookAt.lerp(dynamicPresetTarget, 0.06);
       camera.lookAt(currentLookAt);
 
       // Subtle Ambient Machine Rotation & Floating (Active at all sizes)

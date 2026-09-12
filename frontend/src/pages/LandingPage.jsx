@@ -85,30 +85,30 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* GLOBAL FIXED 3D PRINTER BACKGROUND (BEHIND ENTIRE SITE WHILE SCROLLING)   */}
       {/* ========================================================================= */}
-      <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-75 filter blur-[0.4px]">
+      <div className="fixed inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-90 filter blur-[0.2px]">
         <Xerox3DViewer />
       </div>
 
       {/* Atmospheric overlay to ensure foreground text is crisp across all sections */}
-      <div className="fixed inset-0 bg-gradient-to-b from-white/35 via-white/10 to-white/50 pointer-events-none z-[1]" />
+      <div className="fixed inset-0 bg-gradient-to-b from-white/20 via-transparent to-white/30 pointer-events-none z-[1]" />
 
       {/* ========================================================================= */}
       {/* 1. HERO SECTION (TRANSPARENT FOREGROUND, 3D MODEL BEHIND ON THE RIGHT)    */}
       {/* ========================================================================= */}
-      <section className="relative z-10 min-h-[580px] lg:min-h-[660px] flex items-start justify-center pt-4 pb-12 lg:pt-7 lg:pb-16 overflow-hidden border-b border-slate-200/80 bg-transparent">
+      <section className="relative z-10 flex items-start justify-center pt-2 pb-3 lg:pt-4 lg:pb-4 overflow-hidden border-b border-slate-200/60 bg-transparent">
         {/* Foreground Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-2 lg:pt-4">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-1 lg:pt-2">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
             {/* Left Column: Main Headline, Value Prop, CTAs & Trust Badges (7 cols) */}
-            <div className="lg:col-span-7 space-y-4 lg:space-y-5 text-center lg:text-left">
+            <div className="lg:col-span-7 space-y-3 text-center lg:text-left">
               {/* Pill Badge */}
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-sky-200 text-xs font-semibold text-sky-700 shadow-sm">
+              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/65 backdrop-blur-md border border-sky-200/80 text-xs font-semibold text-sky-700 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
                 <span>Next-Gen Campus Print Ecosystem • AWS Bedrock AI</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-slate-900 drop-shadow-sm max-w-xl">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-slate-900 drop-shadow-sm max-w-xl">
                 The Autonomous{" "}
                 <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   Campus Print Cloud
@@ -116,17 +116,17 @@ export default function LandingPage({ onSelectPortal }) {
               </h1>
 
               {/* Subhead / Quotation - constrained width so it never touches the 3D model */}
-              <p className="text-base sm:text-lg text-slate-600 max-w-lg lg:max-w-[490px] font-normal leading-relaxed mx-auto lg:mx-0">
+              <p className="text-sm sm:text-base lg:text-lg text-slate-600 max-w-lg lg:max-w-[490px] font-normal leading-relaxed mx-auto lg:mx-0">
                 Eliminate WhatsApp queue chaos, USB malware risks, and lost files. Order from your hostel bed, let Bedrock
                 AI quote instant ₹ rates, and pick up your{" "}
                 <strong className="text-sky-700 font-semibold">100% Zero-Retention shredded</strong> prints with zero wait.
               </p>
 
               {/* Dual Direct Portal Entry Actions */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-1">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-0.5">
                 <button
                   onClick={() => onSelectPortal("student")}
-                  className="group flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-sky-600/25 hover:shadow-xl hover:shadow-sky-600/35 hover:-translate-y-0.5 transition-all cursor-pointer"
+                  className="group flex items-center space-x-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-sky-600/25 hover:shadow-xl hover:shadow-sky-600/35 hover:-translate-y-0.5 transition-all cursor-pointer"
                 >
                   <Printer className="w-5 h-5 group-hover:rotate-6 transition-transform" />
                   <span>Launch Student Portal</span>
@@ -135,7 +135,7 @@ export default function LandingPage({ onSelectPortal }) {
 
                 <button
                   onClick={() => onSelectPortal("staff")}
-                  className="flex items-center space-x-2.5 px-5 py-3.5 rounded-2xl bg-white/95 hover:bg-white text-slate-800 hover:text-indigo-600 border border-slate-200/90 hover:border-indigo-300 font-bold text-base shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+                  className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-white/70 hover:bg-white/90 text-slate-800 hover:text-indigo-600 border border-white/80 hover:border-indigo-300 font-bold text-base backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
                 >
                   <Shield className="w-5 h-5 text-indigo-600" />
                   <span>Staff Command</span>
@@ -143,26 +143,26 @@ export default function LandingPage({ onSelectPortal }) {
               </div>
 
               {/* Trust Indicators */}
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-4 text-xs text-slate-600">
-                <span className="flex items-center gap-1.5 bg-white/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
+              <div className="pt-0.5 flex flex-wrap items-center justify-center lg:justify-start gap-y-1.5 gap-x-3 text-xs text-slate-600">
+                <span className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/75 shadow-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Zero USB Pen-Drive Virus
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
+                <span className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/75 shadow-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Instant File Shredder (S3 Purge)
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
+                <span className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/75 shadow-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Verified UPI & Razorpay
                 </span>
               </div>
             </div>
 
-            {/* Right Column: Kept open & empty so the 3D printer is unobstructed, with minimal sleek floating icon badges */}
-            <div className="lg:col-span-5 hidden lg:flex flex-col items-end justify-center space-y-4 py-8 pointer-events-none select-none">
+            {/* Right Column: Sleek floating glassmorphism icon badges */}
+            <div className="lg:col-span-5 hidden lg:flex flex-col items-end justify-center space-y-3 py-2 pointer-events-none select-none">
               {/* Minimal Floating Icon Badge 1 */}
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-md shadow-slate-200/40 text-xs font-semibold text-slate-700">
+              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 text-xs font-semibold text-slate-700">
                 <span className="relative flex h-2 w-2">
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
@@ -172,13 +172,13 @@ export default function LandingPage({ onSelectPortal }) {
               </div>
 
               {/* Minimal Floating Icon Badge 2 */}
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-md shadow-slate-200/40 text-xs font-semibold text-slate-700">
+              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 text-xs font-semibold text-slate-700">
                 <Zap className="w-4 h-4 text-amber-500" />
                 <span>Sub-second Bedrock AI Quoting</span>
               </div>
 
               {/* Minimal Floating Icon Badge 3 */}
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/80 backdrop-blur-md border border-slate-200/80 shadow-md shadow-slate-200/40 text-xs font-semibold text-slate-700">
+              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 text-xs font-semibold text-slate-700">
                 <Shield className="w-4 h-4 text-emerald-600" />
                 <span>100% Zero-Retention Auto-Shred</span>
               </div>
@@ -188,27 +188,27 @@ export default function LandingPage({ onSelectPortal }) {
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS (LIGHT THEME)                   */}
+      {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS (LIGHT GLASSMORPHISM)            */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-10 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
+      <section className="relative z-10 py-5 lg:py-6 bg-white/30 backdrop-blur-md border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-sky-300/60 transition-all">
               <div className="text-3xl sm:text-4xl font-black text-sky-700 font-mono">&lt; 10s</div>
               <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Order Submission Time</div>
               <p className="text-[11px] text-slate-500 mt-1">From upload to queue confirmation</p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-emerald-300/60 transition-all">
               <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono">100%</div>
               <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Zero-Retention Privacy</div>
               <p className="text-[11px] text-slate-500 mt-1">S3 & local files shredded on handover</p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-amber-300/60 transition-all">
               <div className="text-3xl sm:text-4xl font-black text-amber-600 font-mono">₹0</div>
               <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Hidden Overcharges</div>
               <p className="text-[11px] text-slate-500 mt-1">Exact Hyderabad student rates upfront</p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-indigo-300/60 transition-all">
               <div className="text-3xl sm:text-4xl font-black text-indigo-700 font-mono">3 Channels</div>
               <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Unified Ingestion</div>
               <p className="text-[11px] text-slate-500 mt-1">Web, WhatsApp, and Telegram in 1 queue</p>
@@ -237,8 +237,8 @@ export default function LandingPage({ onSelectPortal }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Issue 1 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white/45 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-rose-300 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50/80 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Smartphone className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">1. WhatsApp DM Chaos & Lost Files</h3>
@@ -249,8 +249,8 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
 
             {/* Issue 2 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white/45 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-rose-300 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50/80 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <AlertTriangle className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">2. USB Pendrive Malware Nightmares</h3>
@@ -261,8 +261,8 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
 
             {/* Issue 3 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white/45 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-rose-300 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50/80 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <FolderLock className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">3. Zero Privacy & Dangerous Data Leaks</h3>
@@ -273,8 +273,8 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
 
             {/* Issue 4 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white/45 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-rose-300 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50/80 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <DollarSign className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">4. Opaque Mental Math & Surprise Pricing</h3>
@@ -285,8 +285,8 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
 
             {/* Issue 5 */}
-            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white/45 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-rose-300 hover:shadow-xl transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50/80 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6" />
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-2">5. 40-Minute Crowd Bottlenecks</h3>
@@ -297,7 +297,7 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
 
             {/* Summary Card */}
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-sky-50 via-white to-indigo-50 border border-sky-200 shadow-sm flex flex-col justify-center text-left">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-sky-50/50 via-white/45 to-indigo-50/50 backdrop-blur-md border border-white/80 shadow-lg shadow-sky-200/20 flex flex-col justify-center text-left">
               <div className="flex items-center space-x-2 text-sky-700 font-bold mb-2">
                 <Sparkles className="w-5 h-5" />
                 <span>The EasePrint Solution</span>
@@ -315,10 +315,10 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 4. WHAT WE ARE SOLVING PARTICULARLY: THE EASEPRINT ARCHITECTURE           */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-16 lg:py-24 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
+      <section className="relative z-10 py-16 lg:py-24 bg-white/60 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
+            <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50/80 px-3 py-1 rounded-full border border-sky-200">
               The Technology
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
@@ -332,9 +332,9 @@ export default function LandingPage({ onSelectPortal }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Pillar 1 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all flex flex-col justify-between shadow-sm">
+            <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-sky-300 hover:bg-white/70 transition-all flex flex-col justify-between shadow-xl shadow-slate-200/30">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100/80 text-sky-700 flex items-center justify-center mb-6">
                   <Cpu className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">1. Amazon Bedrock AI Document Specialist</h3>
@@ -344,15 +344,15 @@ export default function LandingPage({ onSelectPortal }) {
                   campus rates in under 1 second with sub-token precision.
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+              <div className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/80 text-xs text-slate-600 font-mono shadow-xs">
                 <span className="text-sky-700 font-bold">AWS Bedrock:</span> us.amazon.nova-lite-v1:0 (Sub-second Converse API)
               </div>
             </div>
 
             {/* Pillar 2 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-emerald-300 transition-all flex flex-col justify-between shadow-sm">
+            <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-emerald-300 hover:bg-white/70 transition-all flex flex-col justify-between shadow-xl shadow-slate-200/30">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center mb-6">
                   <Shield className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">2. Military-Grade Zero-Retention Shredder</h3>
@@ -362,15 +362,15 @@ export default function LandingPage({ onSelectPortal }) {
                   scrub, and a 24-hour TTL buffer. Your private data never lingers.
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+              <div className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/80 text-xs text-slate-600 font-mono shadow-xs">
                 <span className="text-emerald-700 font-bold">Privacy Protocol:</span> S3 delete_object + local os.remove + TTL Buffer
               </div>
             </div>
 
             {/* Pillar 3 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all flex flex-col justify-between shadow-sm">
+            <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-indigo-300 hover:bg-white/70 transition-all flex flex-col justify-between shadow-xl shadow-slate-200/30">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 text-indigo-700 flex items-center justify-center mb-6">
                   <Layers className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">3. Autonomous Counter Orchestration</h3>
@@ -380,15 +380,15 @@ export default function LandingPage({ onSelectPortal }) {
                   <strong>Counter 2 (Binding)</strong>, eliminating bottlenecks at the physical counter.
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+              <div className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/80 text-xs text-slate-600 font-mono shadow-xs">
                 <span className="text-indigo-700 font-bold">Dispatch Engine:</span> Counter 1 (Xerox) • Counter 2 (Binding)
               </div>
             </div>
 
             {/* Pillar 4 */}
-            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all flex flex-col justify-between shadow-sm">
+            <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-sky-300 hover:bg-white/70 transition-all flex flex-col justify-between shadow-xl shadow-slate-200/30">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100/80 text-sky-700 flex items-center justify-center mb-6">
                   <RefreshCw className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-3">4. Dynamic Pricing & Custom RAG Knowledge</h3>
@@ -398,7 +398,7 @@ export default function LandingPage({ onSelectPortal }) {
                   that dynamically enrich the AI agent's RAG knowledge base.
                 </p>
               </div>
-              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+              <div className="bg-white/60 backdrop-blur-sm p-3 rounded-xl border border-white/80 text-xs text-slate-600 font-mono shadow-xs">
                 <span className="text-sky-700 font-bold">Customizer:</span> Live Rates Sync + In-Memory RAG Context Injection
               </div>
             </div>
@@ -423,29 +423,29 @@ export default function LandingPage({ onSelectPortal }) {
             </p>
           </div>
 
-          {/* Table Container (Light Theme) */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
+          {/* Table Container (Glassmorphism) */}
+          <div className="overflow-x-auto rounded-2xl border border-white/80 bg-white/45 backdrop-blur-md shadow-xl shadow-slate-200/40">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-100 text-xs uppercase tracking-wider text-slate-600 border-b border-slate-200">
+              <thead className="bg-white/60 backdrop-blur-md text-xs uppercase tracking-wider text-slate-600 border-b border-slate-200/80">
                 <tr>
                   <th className="py-4 px-6 font-semibold">Feature / Workflow</th>
-                  <th className="py-4 px-6 font-semibold text-rose-700 bg-rose-50">Traditional Campus Xerox</th>
-                  <th className="py-4 px-6 font-semibold text-sky-800 bg-sky-50">EasePrint Cloud Platform</th>
+                  <th className="py-4 px-6 font-semibold text-rose-700 bg-rose-50/40">Traditional Campus Xerox</th>
+                  <th className="py-4 px-6 font-semibold text-sky-800 bg-sky-50/50">EasePrint Cloud Platform</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-200 text-slate-700">
-                <tr className="hover:bg-slate-50/60 transition-colors">
+              <tbody className="divide-y divide-slate-200/80 text-slate-700">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <Smartphone className="w-4 h-4 text-slate-500" />
                     <span>Order Placement</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Cluttered WhatsApp DMs or standing in crowd</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-sky-700">
                       <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Instant Web Portal + WhatsApp & Telegram Bots</span>
@@ -453,18 +453,18 @@ export default function LandingPage({ onSelectPortal }) {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/60 transition-colors">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <Shield className="w-4 h-4 text-slate-500" />
                     <span>Student Data Privacy</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Documents saved forever on shared public desktop</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-emerald-700">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>100% Zero-Retention Shredder (S3/Local deleted on ready)</span>
@@ -472,18 +472,18 @@ export default function LandingPage({ onSelectPortal }) {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/60 transition-colors">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4 text-slate-500" />
                     <span>Malware & Virus Exposure</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>High risk: USB flash drives spread PC viruses</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-sky-700">
                       <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Zero-Touch cloud upload (No USB ever required)</span>
@@ -491,18 +491,18 @@ export default function LandingPage({ onSelectPortal }) {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/60 transition-colors">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <DollarSign className="w-4 h-4 text-slate-500" />
                     <span>Price Transparency</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Verbal guessing / surprise costs upon collection</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-sky-700">
                       <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Instant AI rate calculation with itemized ₹ receipt</span>
@@ -510,18 +510,18 @@ export default function LandingPage({ onSelectPortal }) {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/60 transition-colors">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <Clock className="w-4 h-4 text-slate-500" />
                     <span>Queue & Progress Tracking</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Zero visibility: Wait in crowd and interrupt staff</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-sky-700">
                       <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Live status banner + pickup alert notification</span>
@@ -529,18 +529,18 @@ export default function LandingPage({ onSelectPortal }) {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/60 transition-colors">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <Layers className="w-4 h-4 text-slate-500" />
                     <span>Pickup Organization</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>1 crowded counter with mixed Xerox and binding jobs</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-sky-700">
                       <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Automated Counter 1 (Xerox) / Counter 2 (Binding)</span>
@@ -548,18 +548,18 @@ export default function LandingPage({ onSelectPortal }) {
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-50/60 transition-colors">
+                <tr className="hover:bg-white/40 transition-colors">
                   <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
                     <Store className="w-4 h-4 text-slate-500" />
                     <span>Store Price Customization</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-50/30">
+                  <td className="py-4 px-6 bg-rose-50/20">
                     <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Fixed rates painted on walls; hard to adapt</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                  <td className="py-4 px-6 bg-sky-50/30 font-semibold text-slate-900">
                     <div className="flex items-center gap-2 text-sky-700">
                       <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Live web price matrix + custom RAG policy upload</span>
@@ -575,10 +575,10 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 6. WHY PEOPLE HAVE TO CHOOSE THIS PLATFORM (VALUE BY STAKEHOLDER)         */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-16 lg:py-24 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
+      <section className="relative z-10 py-16 lg:py-24 bg-white/60 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50/80 px-3 py-1 rounded-full border border-emerald-200">
               The Value Proposition
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
@@ -590,7 +590,7 @@ export default function LandingPage({ onSelectPortal }) {
             </p>
 
             {/* Audience Toggle */}
-            <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 mt-6">
+            <div className="inline-flex items-center bg-white/50 backdrop-blur-md p-1.5 rounded-2xl border border-white/80 mt-6 shadow-sm">
               <button
                 onClick={() => setSelectedAudience("students")}
                 className={`flex items-center space-x-2 px-5 py-2 rounded-xl text-sm font-bold transition-all ${
@@ -618,8 +618,8 @@ export default function LandingPage({ onSelectPortal }) {
 
           {selectedAudience === "students" ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-sky-300 hover:bg-white/70 transition-all shadow-xl shadow-slate-200/30">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100/80 text-sky-700 flex items-center justify-center mb-6">
                   <Clock className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Zero Waiting in Line</h3>
@@ -629,8 +629,8 @@ export default function LandingPage({ onSelectPortal }) {
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-emerald-300 hover:bg-white/70 transition-all shadow-xl shadow-slate-200/30">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100/80 text-emerald-700 flex items-center justify-center mb-6">
                   <Lock className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Complete Digital Privacy</h3>
@@ -640,8 +640,8 @@ export default function LandingPage({ onSelectPortal }) {
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-indigo-300 hover:bg-white/70 transition-all shadow-xl shadow-slate-200/30">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 text-indigo-700 flex items-center justify-center mb-6">
                   <Sparkles className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">AI Cost Optimization</h3>
@@ -653,8 +653,8 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-indigo-300 hover:bg-white/70 transition-all shadow-xl shadow-slate-200/30">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100/80 text-indigo-700 flex items-center justify-center mb-6">
                   <Zap className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">3x Higher Daily Throughput</h3>
@@ -664,8 +664,8 @@ export default function LandingPage({ onSelectPortal }) {
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-sky-300 hover:bg-white/70 transition-all shadow-xl shadow-slate-200/30">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100/80 text-sky-700 flex items-center justify-center mb-6">
                   <Sliders className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Dynamic Price Matrix</h3>
@@ -675,8 +675,8 @@ export default function LandingPage({ onSelectPortal }) {
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm">
-                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-white/45 backdrop-blur-md border border-white/75 hover:border-amber-300 hover:bg-white/70 transition-all shadow-xl shadow-slate-200/30">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100/80 text-amber-800 flex items-center justify-center mb-6">
                   <DollarSign className="w-6 h-6" />
                 </div>
                 <h3 className="text-xl font-bold text-slate-900 mb-2">Zero Revenue Leakage</h3>
@@ -695,9 +695,9 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       <section className="relative z-10 py-16 lg:py-24 bg-slate-50/65 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-white/95 p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50 backdrop-blur-sm">
+          <div className="bg-white/50 p-8 sm:p-12 rounded-3xl border border-white/80 shadow-2xl shadow-slate-200/40 backdrop-blur-lg">
             <div className="text-center max-w-2xl mx-auto mb-10">
-              <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
+              <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50/80 px-3 py-1 rounded-full border border-sky-200">
                 Interactive ROI Tool
               </span>
               <h2 className="text-3xl font-black text-slate-900 mt-3">Calculate Your Semester Savings</h2>
@@ -719,7 +719,7 @@ export default function LandingPage({ onSelectPortal }) {
                 step="10"
                 value={monthlyPages}
                 onChange={(e) => setMonthlyPages(Number(e.target.value))}
-                className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
+                className="w-full h-3 bg-slate-200/80 rounded-lg appearance-none cursor-pointer accent-sky-600"
               />
               <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                 <span>10 pages (Light)</span>
@@ -730,7 +730,7 @@ export default function LandingPage({ onSelectPortal }) {
 
             {/* Metrics Output Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="p-5 rounded-2xl bg-white/60 backdrop-blur-md border border-white/75 shadow-sm">
                 <div className="text-3xl font-black text-sky-700 font-mono">~{timeSavedMinutes} mins</div>
                 <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-1">
                   Queue Waiting Time Saved
@@ -738,7 +738,7 @@ export default function LandingPage({ onSelectPortal }) {
                 <p className="text-[11px] text-slate-500 mt-1">Equivalent to {Math.round(timeSavedMinutes / 50)} full study lectures</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="p-5 rounded-2xl bg-white/60 backdrop-blur-md border border-white/75 shadow-sm">
                 <div className="text-3xl font-black text-emerald-600 font-mono">0% Risk</div>
                 <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-1">
                   Malware & Leak Exposure
@@ -746,7 +746,7 @@ export default function LandingPage({ onSelectPortal }) {
                 <p className="text-[11px] text-slate-500 mt-1">100% digital shredder on completion</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+              <div className="p-5 rounded-2xl bg-white/60 backdrop-blur-md border border-white/75 shadow-sm">
                 <div className="text-3xl font-black text-indigo-700 font-mono">{queuesAvoided} Queues</div>
                 <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-1">
                   Physical Bottlenecks Avoided
@@ -761,10 +761,10 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 8. FREQUENTLY ASKED QUESTIONS (FAQ)                                       */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-16 lg:py-24 bg-white/75 backdrop-blur-sm border-b border-slate-200/80">
+      <section className="relative z-10 py-16 lg:py-24 bg-white/60 backdrop-blur-sm border-b border-slate-200/80">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-600 bg-white/70 backdrop-blur-sm px-3 py-1 rounded-full border border-slate-200">
               Clear Answers
             </span>
             <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
@@ -776,7 +776,7 @@ export default function LandingPage({ onSelectPortal }) {
             {faqs.map((faq, idx) => (
               <div
                 key={idx}
-                className="rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden transition-all shadow-sm"
+                className="rounded-2xl bg-white/45 backdrop-blur-md border border-white/75 overflow-hidden transition-all shadow-sm hover:bg-white/70"
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === idx ? -1 : idx)}
