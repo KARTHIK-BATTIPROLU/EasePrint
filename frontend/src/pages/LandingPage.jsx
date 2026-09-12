@@ -93,40 +93,40 @@ export default function LandingPage({ onSelectPortal }) {
       <div className="fixed inset-0 bg-gradient-to-b from-white/20 via-transparent to-white/30 pointer-events-none z-[1]" />
 
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION (TRANSPARENT FOREGROUND, 3D MODEL BEHIND ON THE RIGHT)    */}
+      {/* 1. HERO SECTION (FULL VIEWPORT: HEADLINE, QUOTATION, 3 BADGES & 3D KIOSK) */}
       {/* ========================================================================= */}
-      <section className="relative z-10 flex items-start justify-center pt-2 pb-3 lg:pt-4 lg:pb-4 overflow-hidden border-b border-slate-200/60 bg-transparent">
+      <section className="relative z-10 min-h-[calc(100vh-64px)] flex items-center justify-center py-12 lg:py-16 overflow-hidden border-b border-slate-200/60 bg-transparent">
         {/* Foreground Content */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-1 lg:pt-2">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-10 items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Column: Main Headline, Value Prop, CTAs & Trust Badges (7 cols) */}
-            <div className="lg:col-span-7 space-y-3 text-center lg:text-left">
+            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
               {/* Pill Badge */}
-              <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/65 backdrop-blur-md border border-sky-200/80 text-xs font-semibold text-sky-700 shadow-sm">
-                <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
+              <div className="inline-flex items-center space-x-2 px-4 py-1.5 rounded-full bg-white/70 backdrop-blur-md border border-sky-200/90 text-xs sm:text-sm font-semibold text-sky-700 shadow-sm">
+                <Sparkles className="w-4 h-4 text-sky-600 animate-pulse" />
                 <span>Next-Gen Campus Print Ecosystem • AWS Bedrock AI</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.1] text-slate-900 drop-shadow-sm max-w-xl">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-black tracking-tight leading-[1.08] text-slate-900 drop-shadow-sm max-w-xl">
                 The Autonomous{" "}
                 <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   Campus Print Cloud
                 </span>
               </h1>
 
-              {/* Subhead / Quotation - constrained width so it never touches the 3D model */}
-              <p className="text-sm sm:text-base lg:text-lg text-slate-600 max-w-lg lg:max-w-[490px] font-normal leading-relaxed mx-auto lg:mx-0">
+              {/* Subhead / Quotation - Improved prominent size per user request */}
+              <p className="text-base sm:text-lg lg:text-xl text-slate-600 max-w-xl font-normal leading-relaxed mx-auto lg:mx-0">
                 Eliminate WhatsApp queue chaos, USB malware risks, and lost files. Order from your hostel bed, let Bedrock
                 AI quote instant ₹ rates, and pick up your{" "}
                 <strong className="text-sky-700 font-semibold">100% Zero-Retention shredded</strong> prints with zero wait.
               </p>
 
               {/* Dual Direct Portal Entry Actions */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-3 pt-0.5">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-1">
                 <button
                   onClick={() => onSelectPortal("student")}
-                  className="group flex items-center space-x-2.5 px-6 py-3 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-sky-600/25 hover:shadow-xl hover:shadow-sky-600/35 hover:-translate-y-0.5 transition-all cursor-pointer"
+                  className="group flex items-center space-x-3 px-7 py-4 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-base sm:text-lg shadow-lg shadow-sky-600/25 hover:shadow-xl hover:shadow-sky-600/35 hover:-translate-y-0.5 transition-all cursor-pointer"
                 >
                   <Printer className="w-5 h-5 group-hover:rotate-6 transition-transform" />
                   <span>Launch Student Portal</span>
@@ -135,83 +135,61 @@ export default function LandingPage({ onSelectPortal }) {
 
                 <button
                   onClick={() => onSelectPortal("staff")}
-                  className="flex items-center space-x-2 px-5 py-3 rounded-2xl bg-white/70 hover:bg-white/90 text-slate-800 hover:text-indigo-600 border border-white/80 hover:border-indigo-300 font-bold text-base backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
+                  className="flex items-center space-x-2.5 px-6 py-4 rounded-2xl bg-white/80 hover:bg-white text-slate-800 hover:text-indigo-600 border border-white/90 hover:border-indigo-300 font-bold text-base sm:text-lg backdrop-blur-md shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all cursor-pointer"
                 >
                   <Shield className="w-5 h-5 text-indigo-600" />
                   <span>Staff Command</span>
                 </button>
               </div>
 
-              {/* Trust Indicators */}
-              <div className="pt-0.5 flex flex-wrap items-center justify-center lg:justify-start gap-y-1.5 gap-x-3 text-xs text-slate-600">
-                <span className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/75 shadow-xs">
+              {/* Trust Indicators ("those three things") */}
+              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-3 text-xs sm:text-sm text-slate-600">
+                <span className="flex items-center gap-2 bg-white/65 backdrop-blur-md px-4 py-2 rounded-full border border-white/80 shadow-xs font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Zero USB Pen-Drive Virus
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/75 shadow-xs">
+                <span className="flex items-center gap-2 bg-white/65 backdrop-blur-md px-4 py-2 rounded-full border border-white/80 shadow-xs font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Instant File Shredder (S3 Purge)
                 </span>
-                <span className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/75 shadow-xs">
+                <span className="flex items-center gap-2 bg-white/65 backdrop-blur-md px-4 py-2 rounded-full border border-white/80 shadow-xs font-medium">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Verified UPI & Razorpay
                 </span>
               </div>
             </div>
 
-            {/* Right Column: Sleek floating glassmorphism icon badges */}
-            <div className="lg:col-span-5 hidden lg:flex flex-col items-end justify-center space-y-3 py-2 pointer-events-none select-none">
-              {/* Minimal Floating Icon Badge 1 */}
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 text-xs font-semibold text-slate-700">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-                </span>
-                <Printer className="w-4 h-4 text-sky-600" />
-                <span>Dual High-Speed Xerox Engine</span>
-              </div>
-
-              {/* Minimal Floating Icon Badge 2 */}
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 text-xs font-semibold text-slate-700">
-                <Zap className="w-4 h-4 text-amber-500" />
-                <span>Sub-second Bedrock AI Quoting</span>
-              </div>
-
-              {/* Minimal Floating Icon Badge 3 */}
-              <div className="flex items-center space-x-2.5 px-4 py-2 rounded-2xl bg-white/50 backdrop-blur-md border border-white/75 shadow-lg shadow-slate-200/30 text-xs font-semibold text-slate-700">
-                <Shield className="w-4 h-4 text-emerald-600" />
-                <span>100% Zero-Retention Auto-Shred</span>
-              </div>
-            </div>
+            {/* Right Column: Clean, spacious area dedicated to the 3D Printer Animation */}
+            <div className="lg:col-span-5 hidden lg:block pointer-events-none select-none min-h-[360px]" />
           </div>
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS (LIGHT GLASSMORPHISM)            */}
+      {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS (REVEALED ON SCROLL)             */}
       {/* ========================================================================= */}
-      <section className="relative z-10 py-5 lg:py-6 bg-white/30 backdrop-blur-md border-b border-slate-200/60">
+      <section className="relative z-10 py-16 lg:py-20 bg-white/40 backdrop-blur-md border-b border-slate-200/60">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 text-center">
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-sky-300/60 transition-all">
-              <div className="text-3xl sm:text-4xl font-black text-sky-700 font-mono">&lt; 10s</div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Order Submission Time</div>
-              <p className="text-[11px] text-slate-500 mt-1">From upload to queue confirmation</p>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+            <div className="p-6 rounded-2xl bg-white/55 backdrop-blur-md border border-white/85 shadow-lg shadow-slate-200/30 hover:bg-white/75 hover:border-sky-300/60 transition-all">
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-sky-700 font-mono">&lt; 10s</div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-700 uppercase tracking-wider mt-2">Order Submission Time</div>
+              <p className="text-xs text-slate-500 mt-1">From upload to queue confirmation</p>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-emerald-300/60 transition-all">
-              <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono">100%</div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Zero-Retention Privacy</div>
-              <p className="text-[11px] text-slate-500 mt-1">S3 & local files shredded on handover</p>
+            <div className="p-6 rounded-2xl bg-white/55 backdrop-blur-md border border-white/85 shadow-lg shadow-slate-200/30 hover:bg-white/75 hover:border-emerald-300/60 transition-all">
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-emerald-600 font-mono">100%</div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-700 uppercase tracking-wider mt-2">Zero-Retention Privacy</div>
+              <p className="text-xs text-slate-500 mt-1">S3 & local files shredded on handover</p>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-amber-300/60 transition-all">
-              <div className="text-3xl sm:text-4xl font-black text-amber-600 font-mono">₹0</div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Hidden Overcharges</div>
-              <p className="text-[11px] text-slate-500 mt-1">Exact Hyderabad student rates upfront</p>
+            <div className="p-6 rounded-2xl bg-white/55 backdrop-blur-md border border-white/85 shadow-lg shadow-slate-200/30 hover:bg-white/75 hover:border-amber-300/60 transition-all">
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-amber-600 font-mono">₹0</div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-700 uppercase tracking-wider mt-2">Hidden Overcharges</div>
+              <p className="text-xs text-slate-500 mt-1">Exact Hyderabad student rates upfront</p>
             </div>
-            <div className="p-4 sm:p-5 rounded-2xl bg-white/50 backdrop-blur-md border border-white/80 shadow-lg shadow-slate-200/30 hover:bg-white/70 hover:border-indigo-300/60 transition-all">
-              <div className="text-3xl sm:text-4xl font-black text-indigo-700 font-mono">3 Channels</div>
-              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Unified Ingestion</div>
-              <p className="text-[11px] text-slate-500 mt-1">Web, WhatsApp, and Telegram in 1 queue</p>
+            <div className="p-6 rounded-2xl bg-white/55 backdrop-blur-md border border-white/85 shadow-lg shadow-slate-200/30 hover:bg-white/75 hover:border-indigo-300/60 transition-all">
+              <div className="text-3xl sm:text-4xl lg:text-5xl font-black text-indigo-700 font-mono">3 Channels</div>
+              <div className="text-xs sm:text-sm font-semibold text-slate-700 uppercase tracking-wider mt-2">Unified Ingestion</div>
+              <p className="text-xs text-slate-500 mt-1">Web, WhatsApp, and Telegram in 1 queue</p>
             </div>
           </div>
         </div>

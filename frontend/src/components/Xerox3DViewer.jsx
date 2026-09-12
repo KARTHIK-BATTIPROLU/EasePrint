@@ -43,7 +43,7 @@ export default function Xerox3DViewer() {
     const isMobile = width < 1024;
     const machinePosX = isMobile ? 0 : 2.6;
     const targetLookX = isMobile ? 0 : 0.6;
-    const initialBaseScale = isMobile ? 0.52 : 0.46;
+    const initialBaseScale = isMobile ? 0.52 : 0.52;
 
     // --- Camera Setup with Wide Framing & Offset Target ---
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
@@ -130,7 +130,7 @@ export default function Xerox3DViewer() {
     const machineGroup = new THREE.Group();
     // Elevated in Hero right column at scroll 0, smoothly glides into middle and descends on scroll
     machineGroup.scale.set(initialBaseScale, initialBaseScale, initialBaseScale);
-    machineGroup.position.set(machinePosX, isMobile ? 0.2 : 0.82, 0);
+    machineGroup.position.set(machinePosX, isMobile ? 0.0 : 0.15, 0);
     scene.add(machineGroup);
 
     // 1. Base Pedestal
@@ -294,7 +294,7 @@ export default function Xerox3DViewer() {
     });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.position.set(machinePosX, isMobile ? 0.2 : 0.82, 0);
+    groundMesh.position.set(machinePosX, isMobile ? 0.0 : 0.15, 0);
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
@@ -307,7 +307,7 @@ export default function Xerox3DViewer() {
     });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     ringMesh.rotation.x = -Math.PI / 2;
-    ringMesh.position.set(machinePosX, isMobile ? 0.21 : 0.83, 0);
+    ringMesh.position.set(machinePosX, isMobile ? 0.01 : 0.16, 0);
     scene.add(ringMesh);
 
     // --- Studio Lighting ---
@@ -362,28 +362,28 @@ export default function Xerox3DViewer() {
       if (isMobile) {
         targetX = 0;
         targetScale = 0.52;
-        targetY = 0.1 - Math.min(1, smoothScrollY / 2000) * 0.45;
+        targetY = 0.0 - Math.min(1, smoothScrollY / 2000) * 0.45;
       } else {
-        if (smoothScrollY <= 600) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 600);
+        if (smoothScrollY <= 850) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 850);
           targetX = THREE.MathUtils.lerp(2.5, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.48, 0.68, t);
-          targetY = THREE.MathUtils.lerp(0.82, -0.15, t);
-        } else if (smoothScrollY <= 1400) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 600, 1400);
+          targetScale = THREE.MathUtils.lerp(0.52, 0.70, t);
+          targetY = THREE.MathUtils.lerp(0.15, -0.32, t);
+        } else if (smoothScrollY <= 1700) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 850, 1700);
           targetX = THREE.MathUtils.lerp(0.0, 2.3, t);
-          targetScale = THREE.MathUtils.lerp(0.68, 0.62, t);
-          targetY = THREE.MathUtils.lerp(-0.15, -0.38, t);
-        } else if (smoothScrollY <= 2300) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 1400, 2300);
+          targetScale = THREE.MathUtils.lerp(0.70, 0.64, t);
+          targetY = THREE.MathUtils.lerp(-0.32, -0.50, t);
+        } else if (smoothScrollY <= 2600) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 1700, 2600);
           targetX = THREE.MathUtils.lerp(2.3, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.62, 0.68, t);
-          targetY = THREE.MathUtils.lerp(-0.38, -0.55, t);
+          targetScale = THREE.MathUtils.lerp(0.64, 0.70, t);
+          targetY = THREE.MathUtils.lerp(-0.50, -0.65, t);
         } else {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 2300, 3200);
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 2600, 3500);
           targetX = THREE.MathUtils.lerp(0.0, 2.3, t);
-          targetScale = THREE.MathUtils.lerp(0.68, 0.62, t);
-          targetY = THREE.MathUtils.lerp(-0.55, -0.70, t);
+          targetScale = THREE.MathUtils.lerp(0.70, 0.64, t);
+          targetY = THREE.MathUtils.lerp(-0.65, -0.78, t);
         }
       }
 
@@ -421,7 +421,7 @@ export default function Xerox3DViewer() {
       // Camera adapts dynamically to machine movement
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
       const offsetX = currentX - machinePosX;
-      const offsetY = currentY - 0.82;
+      const offsetY = currentY - 0.15;
 
       const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.55, offsetY * 0.35, 0));
       const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.75, offsetY * 0.45, 0));
