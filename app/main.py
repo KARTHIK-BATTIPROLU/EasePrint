@@ -33,6 +33,16 @@ from app.s3_client import s3_client
 from app.customizations import customizations_manager, StoreCustomizations
 from app.audit_logger import audit_logger
 import io
+import time
+
+_jobs_cache = {"data": None, "timestamp": 0.0}
+_analytics_cache = {"data": None, "timestamp": 0.0}
+_CACHE_TTL = 8.0
+
+def invalidate_jobs_cache():
+    _jobs_cache["timestamp"] = 0.0
+    _analytics_cache["timestamp"] = 0.0
+
 
 logger = logging.getLogger("print_queue_service.api")
 
@@ -297,6 +307,8 @@ async def enqueue_job(job: JobIn):
         },
     )
 
+    invalidate_jobs_cache()
+
     return JobEnqueueResponse(
         job_id=job.job_id,
         status="queued",
@@ -311,12 +323,20 @@ async def enqueue_job(job: JobIn):
 )
 async def list_jobs():
     """Returns all jobs from DynamoDB for the Staff Command Dashboard."""
+    now = time.time()
+    if _jobs_cache["data"] is not None and (now - _jobs_cache["timestamp"]) < _CACHE_TTL:
+        return _jobs_cache["data"]
+
     dynamo = DynamoDBClient()
     items = await dynamo.list_all_jobs(limit=100)
 
     # Format items
     results = []
     for record in items:
+        job_id = record.get("job_id") or ""
+        if job_id.startswith("_config"):
+            continue
+
         requirements = None
         if any(k in record for k in ["copies", "color_mode", "paper_size", "sides", "binding"]):
             requirements = {
@@ -328,7 +348,7 @@ async def list_jobs():
                 "pages": record.get("pages"),
             }
         results.append({
-            "job_id": record.get("job_id"),
+            "job_id": job_id,
             "status": record.get("status", "received"),
             "source_channel": record.get("source_channel"),
             "sender_id": record.get("sender_id"),
@@ -350,6 +370,8 @@ async def list_jobs():
             "notes": record.get("notes"),
         })
 
+    _jobs_cache["data"] = results
+    _jobs_cache["timestamp"] = time.time()
     return results
 
 
@@ -430,6 +452,8 @@ async def update_status(job_id: str, payload: Dict[str, Any]):
         job_id=job_id,
         details={"new_status": new_status, "notes": payload.get("notes")},
     )
+
+    invalidate_jobs_cache()
 
     return {"success": True, "job_id": job_id, "status": new_status}
 
@@ -602,6 +626,8 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
         details=outbound_payload,
     )
 
+    invalidate_jobs_cache()
+
     return {
         "success": True,
         "job_id": job_id,
@@ -701,6 +727,8 @@ async def verify_payment(req: VerifyPaymentRequest):
         },
     )
 
+    invalidate_jobs_cache()
+
     return {
         "success": True,
         "job_id": req.job_id,
@@ -741,6 +769,8 @@ async def reject_job(job_id: str, req: RejectJobRequest):
         },
     )
 
+    invalidate_jobs_cache()
+
     return {
         "success": True,
         "job_id": job_id,
@@ -752,6 +782,10 @@ async def reject_job(job_id: str, req: RejectJobRequest):
 @app.get("/analytics/earnings", tags=["Analytics"])
 async def get_earnings_analytics():
     """Aggregates revenue, order volumes, payment records, and printout logs."""
+    now = time.time()
+    if _analytics_cache["data"] is not None and (now - _analytics_cache["timestamp"]) < _CACHE_TTL:
+        return _analytics_cache["data"]
+
     dynamo = DynamoDBClient()
     items = await dynamo.list_all_jobs(limit=500)
 
@@ -900,7 +934,7 @@ async def get_earnings_analytics():
     payment_records.sort(key=lambda x: x.get("created_at") or "", reverse=True)
     printout_records.sort(key=lambda x: x.get("created_at") or "", reverse=True)
 
-    return {
+    result_payload = {
         "summary": {
             "total_revenue": round(total_revenue, 2),
             "today_revenue": round(today_revenue, 2),
@@ -923,6 +957,10 @@ async def get_earnings_analytics():
         "payment_records": payment_records,
         "printout_records": printout_records,
     }
+
+    _analytics_cache["data"] = result_payload
+    _analytics_cache["timestamp"] = time.time()
+    return result_payload
 
 
 @app.get("/analytics/logs", tags=["Analytics"])

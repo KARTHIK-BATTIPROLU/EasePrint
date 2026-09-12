@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Printer,
   CheckCircle2,
@@ -128,14 +128,21 @@ export default function StaffDashboard() {
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
   const [expandedLogId, setExpandedLogId] = useState(null);
 
-  // Load live jobs
+  // Load live jobs with concurrency guard
+  const loadingJobsRef = useRef(false);
   const loadJobs = async () => {
+    if (loadingJobsRef.current) return;
+    loadingJobsRef.current = true;
     try {
       const data = await fetchAllJobs();
-      setJobs(data);
+      if (Array.isArray(data)) {
+        const validJobs = data.filter((j) => j.job_id && !j.job_id.startsWith("_config"));
+        setJobs(validJobs);
+      }
     } catch (e) {
       console.warn("Could not load jobs:", e);
     } finally {
+      loadingJobsRef.current = false;
       setLoadingJobs(false);
     }
   };
@@ -174,14 +181,14 @@ export default function StaffDashboard() {
   useEffect(() => {
     let interval;
     if (viewMode === "queue") {
-      interval = setInterval(loadJobs, 4000);
+      interval = setInterval(loadJobs, 5000);
     } else if (viewMode === "earnings" || viewMode === "payments" || viewMode === "printouts") {
       loadAnalytics();
-      interval = setInterval(loadAnalytics, 5000);
+      interval = setInterval(loadAnalytics, 6000);
     } else if (viewMode === "logs") {
       loadLogs();
       if (autoRefreshLogs) {
-        interval = setInterval(loadLogs, 3000);
+        interval = setInterval(loadLogs, 4000);
       }
     }
     return () => clearInterval(interval);
@@ -194,8 +201,9 @@ export default function StaffDashboard() {
     else loadAnalytics();
   };
 
-  // Filtered jobs for Queue
+  // Filtered jobs for Queue (guaranteed non-config print orders)
   const filteredJobs = jobs.filter((j) => {
+    if (!j.job_id || j.job_id.startsWith("_config")) return false;
     const matchesChannel =
       filterChannel === "all" || (j.source_channel || "").toLowerCase() === filterChannel;
     if (!matchesChannel) return false;
@@ -209,7 +217,9 @@ export default function StaffDashboard() {
   });
 
   const columns = {
-    received: filteredJobs.filter((j) => j.status === "received" || j.status === "needs_info"),
+    received: filteredJobs.filter(
+      (j) => j.status === "received" || j.status === "needs_info" || j.status === "inquiry"
+    ),
     queued: filteredJobs.filter((j) => j.status === "queued"),
     printing: filteredJobs.filter((j) => j.status === "printing"),
     ready: filteredJobs.filter((j) => j.status === "ready"),
@@ -218,21 +228,50 @@ export default function StaffDashboard() {
   };
 
   const handleConfirmReject = async (jobId) => {
+    // Instant optimistic UI update
+    setJobs((prev) =>
+      prev.map((j) =>
+        j.job_id === jobId ? { ...j, status: "rejected", rejection_reason: rejectReason } : j
+      )
+    );
+    setRejectingJob(null);
     try {
       await rejectJob(jobId, rejectReason);
-      setRejectingJob(null);
       loadJobs();
       loadAnalytics();
     } catch (e) {
       alert("Failed to reject job: " + e.message);
+      loadJobs();
     }
   };
 
-  // Virtual Printer Simulation
+  // Handle instant approve & queue with optimistic UI update
+  const handleApproveAndQueue = async (jobId) => {
+    // 1. Instantly move card to "queued" in UI
+    setJobs((prev) =>
+      prev.map((j) => (j.job_id === jobId ? { ...j, status: "queued" } : j))
+    );
+    try {
+      await updateJobStatus(jobId, "queued", "Staff manual override to queued");
+      loadJobs();
+      loadAnalytics();
+    } catch (err) {
+      console.error("Status update error:", err);
+      loadJobs();
+    }
+  };
+
+  // Virtual Printer Simulation with instant optimistic move
   const handleSimulatePrint = async (jobId) => {
-    await updateJobStatus(jobId, "printing", "Virtual printer simulation active");
-    setActivePrinting((prev) => ({ ...prev, [jobId]: 10 }));
-    loadJobs();
+    setJobs((prev) =>
+      prev.map((j) => (j.job_id === jobId ? { ...j, status: "printing" } : j))
+    );
+    setActivePrinting((prev) => ({ ...prev, [jobId]: 15 }));
+    try {
+      await updateJobStatus(jobId, "printing", "Virtual printer simulation active");
+    } catch (e) {
+      console.warn("Print status update:", e);
+    }
 
     let progress = 10;
     const progressInterval = setInterval(async () => {
@@ -246,6 +285,11 @@ export default function StaffDashboard() {
           delete next[jobId];
           return next;
         });
+
+        // Instantly move to ready in UI
+        setJobs((prev) =>
+          prev.map((j) => (j.job_id === jobId ? { ...j, status: "ready" } : j))
+        );
 
         try {
           const res = await markJobReady(jobId, "Counter 1 (Main)", "Printed via Virtual Printer");
@@ -265,11 +309,19 @@ export default function StaffDashboard() {
     }, 1200);
   };
 
-  // Manual Mark Completed
+  // Manual Mark Completed with instant optimistic move
   const handleMarkCompleted = async (jobId) => {
-    await updateJobStatus(jobId, "completed", "Order handed over to student");
-    loadJobs();
-    loadAnalytics();
+    setJobs((prev) =>
+      prev.map((j) => (j.job_id === jobId ? { ...j, status: "completed" } : j))
+    );
+    try {
+      await updateJobStatus(jobId, "completed", "Order handed over to student");
+      loadJobs();
+      loadAnalytics();
+    } catch (e) {
+      console.error("Mark completed error:", e);
+      loadJobs();
+    }
   };
 
   // Filtered payment records
@@ -550,11 +602,8 @@ export default function StaffDashboard() {
                     actionButton={
                       <div className="space-y-1.5 mt-2">
                         <button
-                          onClick={async () => {
-                            await updateJobStatus(job.job_id, "queued", "Staff manual override to queued");
-                            loadJobs();
-                          }}
-                          className="w-full py-1.5 px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
+                          onClick={() => handleApproveAndQueue(job.job_id)}
+                          className="w-full py-1.5 px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all active:scale-95 cursor-pointer"
                         >
                           <Check className="w-3.5 h-3.5" />
                           <span>Approve & Queue</span>
