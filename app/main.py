@@ -31,6 +31,7 @@ from app.pricing import calculate_hyderabad_price
 from app.session_store import session_store
 from app.s3_client import s3_client
 from app.customizations import customizations_manager, StoreCustomizations
+from app.audit_logger import audit_logger
 import io
 
 logger = logging.getLogger("print_queue_service.api")
@@ -218,6 +219,18 @@ async def upload_file(file: UploadFile = File(...)):
 
     pages = s3_client.extract_page_count_from_bytes(content)
 
+    audit_logger.log(
+        "FILE_UPLOAD",
+        f"Document uploaded: '{file.filename}' ({pages} pages, {len(content)} bytes)",
+        channel="web",
+        details={
+            "file_name": file.filename,
+            "saved_as": safe_name,
+            "pages": pages,
+            "size_bytes": len(content),
+        },
+    )
+
     return {
         "file_name": file.filename,
         "saved_as": safe_name,
@@ -268,6 +281,22 @@ async def enqueue_job(job: JobIn):
         agent = get_bedrock_agent()
         asyncio.create_task(agent.process_job(job_dict))
 
+    audit_logger.log(
+        "ORDER_INTAKE",
+        f"Order {job.job_id} received from {job.source_channel} ({job.sender_name}) - ₹{job.total_amount_inr or 0:.2f}",
+        job_id=job.job_id,
+        channel=job.source_channel,
+        details={
+            "sender_name": job.sender_name,
+            "amount_inr": job.total_amount_inr,
+            "pages": job.pages,
+            "copies": job.copies,
+            "binding": job.binding,
+            "color_mode": job.color_mode,
+            "payment_status": getattr(job, "payment_status", "unpaid"),
+        },
+    )
+
     return JobEnqueueResponse(
         job_id=job.job_id,
         status="queued",
@@ -311,6 +340,12 @@ async def list_jobs():
             "pricing": record.get("pricing"),
             "total_amount_inr": float(record["total_amount_inr"]) if record.get("total_amount_inr") is not None else None,
             "pickup_counter": record.get("pickup_counter", "Counter 1"),
+            "payment_status": record.get("payment_status", "unpaid"),
+            "payment_id": record.get("payment_id"),
+            "paid_at": record.get("paid_at"),
+            "rejection_reason": record.get("rejection_reason"),
+            "file_purged": record.get("file_purged", False),
+            "completed_at": record.get("completed_at"),
             "created_at": record.get("created_at") or record.get("received_at"),
             "notes": record.get("notes"),
         })
@@ -389,6 +424,13 @@ async def update_status(job_id: str, payload: Dict[str, Any]):
     if not success:
         raise HTTPException(status_code=404, detail="Failed to update job status.")
 
+    audit_logger.log(
+        "STATUS_CHANGE",
+        f"Job {job_id} status updated to '{new_status}' ({payload.get('notes') or 'No notes'})",
+        job_id=job_id,
+        details={"new_status": new_status, "notes": payload.get("notes")},
+    )
+
     return {"success": True, "job_id": job_id, "status": new_status}
 
 
@@ -433,6 +475,19 @@ async def student_chat(req: ChatRequest):
     if "pricing" in result and result["pricing"]:
         pricing_data = PricingBreakdown(**result["pricing"])
 
+    audit_logger.log(
+        "AI_CHAT",
+        f"Student chat with AI ({req.session_id}): '{req.message[:50]}...'",
+        job_id=job_id,
+        channel=req.source_channel,
+        details={
+            "session_id": req.session_id,
+            "message": req.message,
+            "reply": reply_text[:120],
+            "needs_clarification": result.get("needs_clarification", False),
+        },
+    )
+
     return ChatResponse(
         reply=reply_text,
         session_id=req.session_id,
@@ -465,6 +520,7 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
     # 2. Instant Digital Shredding Trigger (Zero-Retention Privacy)
     file_url = record.get("file_url")
     file_name = record.get("file_name")
+    shred_info = []
 
     # A. Shred local file if cached on disk
     if file_url and "/uploads/" in file_url:
@@ -473,6 +529,7 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
         if os.path.exists(local_path):
             try:
                 os.remove(local_path)
+                shred_info.append(f"local: {local_filename}")
                 logger.info(f"[PRIVACY] Shredded local file copy: {local_path}")
             except Exception as exc:
                 logger.warning(f"Failed to remove local file {local_path}: {exc}")
@@ -480,9 +537,18 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
     # B. Permanently wipe file from Amazon S3
     if file_name and file_name != "[PURGED_FOR_PRIVACY]":
         await s3_client.delete_object(file_name)
+        shred_info.append(f"s3: {file_name}")
     elif file_url and ("s3.amazonaws.com" in file_url or not file_url.startswith("http")):
         s3_key = file_url.split("/")[-1]
         await s3_client.delete_object(s3_key)
+        shred_info.append(f"s3: {s3_key}")
+
+    audit_logger.log(
+        "PRIVACY_SHRED",
+        f"Zero-Retention shred complete for job {job_id}: Document purged permanently ({', '.join(shred_info) or 'disk/cloud'})",
+        job_id=job_id,
+        details={"shredded_targets": shred_info, "retention_policy": "Zero-Retention Compliance"},
+    )
 
     # 3. Update DynamoDB status with privacy scrub and 24-hour TTL buffer
     await dynamo.mark_job_ready(
@@ -490,6 +556,13 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
         pickup_counter=req.pickup_counter,
         staff_notes=req.staff_notes,
         completed_at=now_iso,
+    )
+
+    audit_logger.log(
+        "PRINT_READY",
+        f"Order {job_id} marked ready for pickup at {req.pickup_counter}. {req.staff_notes or ''}",
+        job_id=job_id,
+        details={"pickup_counter": req.pickup_counter, "staff_notes": req.staff_notes},
     )
 
     # 4. Dispatch backward notification to n8n
@@ -520,6 +593,14 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
     except Exception as exc:
         logger.warning(f"Failed to post completion to n8n: {exc}")
         dispatched = False
+
+    audit_logger.log(
+        "NOTIFICATION_DISPATCH",
+        f"Backward notification dispatched to {target_channel} ({sender_id or 'anonymous'}) for order #{job_id}",
+        job_id=job_id,
+        channel=target_channel,
+        details=outbound_payload,
+    )
 
     return {
         "success": True,
@@ -556,6 +637,12 @@ async def create_payment_order(req: CreateOrderRequest):
                 )
                 if resp.status_code == 200:
                     data = resp.json()
+                    audit_logger.log(
+                        "PAYMENT_INTENT",
+                        f"Razorpay live order created: {data['id']} for ₹{req.amount_inr:.2f} (Job: {req.job_id or 'direct'})",
+                        job_id=req.job_id,
+                        details={"order_id": data["id"], "amount_inr": req.amount_inr, "mock": False},
+                    )
                     return {
                         "success": True,
                         "order_id": data["id"],
@@ -571,6 +658,12 @@ async def create_payment_order(req: CreateOrderRequest):
 
     # Fallback to simulated test order
     mock_order_id = f"order_test_{int(datetime.datetime.now().timestamp())}"
+    audit_logger.log(
+        "PAYMENT_INTENT",
+        f"Simulated test payment order initiated: {mock_order_id} for ₹{req.amount_inr:.2f} (Job: {req.job_id or 'direct'})",
+        job_id=req.job_id,
+        details={"order_id": mock_order_id, "amount_inr": req.amount_inr, "mock": True},
+    )
     return {
         "success": True,
         "order_id": mock_order_id,
@@ -596,6 +689,18 @@ async def verify_payment(req: VerifyPaymentRequest):
         },
     )
     logger.info(f"Payment verified for job {req.job_id} with ID {req.razorpay_payment_id}")
+
+    audit_logger.log(
+        "PAYMENT_SUCCESS",
+        f"Payment verified for order {req.job_id} - Razorpay ID: {req.razorpay_payment_id}",
+        job_id=req.job_id,
+        details={
+            "payment_id": req.razorpay_payment_id,
+            "razorpay_order_id": req.razorpay_order_id,
+            "paid_at": now_iso,
+        },
+    )
+
     return {
         "success": True,
         "job_id": req.job_id,
@@ -624,11 +729,213 @@ async def reject_job(job_id: str, req: RejectJobRequest):
         },
     )
     logger.info(f"Job {job_id} rejected by staff: {req.reason}")
+
+    audit_logger.log(
+        "ORDER_REJECTED",
+        f"Order {job_id} rejected: {req.reason}",
+        job_id=job_id,
+        details={
+            "reason": req.reason,
+            "staff_notes": req.staff_notes,
+            "rejected_at": now_iso,
+        },
+    )
+
     return {
         "success": True,
         "job_id": job_id,
         "status": "rejected",
         "rejection_reason": req.reason,
+    }
+
+
+@app.get("/analytics/earnings", tags=["Analytics"])
+async def get_earnings_analytics():
+    """Aggregates revenue, order volumes, payment records, and printout logs."""
+    dynamo = DynamoDBClient()
+    items = await dynamo.list_all_jobs(limit=500)
+
+    today_str = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d")
+
+    total_revenue = 0.0
+    today_revenue = 0.0
+    binding_revenue = 0.0
+    print_revenue = 0.0
+
+    completed_orders = 0
+    queued_orders = 0
+    rejected_orders = 0
+
+    total_pages_printed = 0
+    bw_pages_printed = 0
+    color_pages_printed = 0
+
+    razorpay_count = 0
+    razorpay_amount = 0.0
+    counter_count = 0
+    counter_amount = 0.0
+
+    channel_stats = {
+        "web": {"count": 0, "revenue": 0.0},
+        "telegram": {"count": 0, "revenue": 0.0},
+        "whatsapp": {"count": 0, "revenue": 0.0},
+    }
+
+    payment_records = []
+    printout_records = []
+
+    for item in items:
+        job_id = item.get("job_id", "UNKNOWN")
+        sender_name = item.get("sender_name", "Anonymous Student")
+        channel = (item.get("source_channel") or "web").lower()
+        status_val = item.get("status", "received")
+        payment_status = item.get("payment_status", "unpaid")
+        payment_id = item.get("payment_id")
+        razorpay_order_id = item.get("razorpay_order_id")
+        amount = float(item.get("total_amount_inr") or item.get("pricing", {}).get("total_amount_inr") or 0.0)
+        created_at = item.get("created_at") or item.get("received_at") or ""
+        paid_at = item.get("paid_at") or ""
+        completed_at = item.get("completed_at") or ""
+
+        # Channels count
+        if channel in channel_stats:
+            channel_stats[channel]["count"] += 1
+        else:
+            channel_stats[channel] = {"count": 1, "revenue": 0.0}
+
+        # Status counts
+        if status_val in ["completed", "ready"]:
+            completed_orders += 1
+        elif status_val in ["queued", "received", "printing"]:
+            queued_orders += 1
+        elif status_val == "rejected":
+            rejected_orders += 1
+
+        # Revenue attribution
+        is_paid = (payment_status == "paid")
+        if is_paid:
+            total_revenue += amount
+            if channel in channel_stats:
+                channel_stats[channel]["revenue"] += amount
+
+            # Check if paid or created today
+            date_check = (paid_at or created_at)[:10]
+            if date_check == today_str:
+                today_revenue += amount
+
+            if payment_id:
+                razorpay_count += 1
+                razorpay_amount += amount
+            else:
+                counter_count += 1
+                counter_amount += amount
+        else:
+            counter_count += 1
+
+        # Pages & printing specs
+        pages = int(item.get("pages") or item.get("requirements", {}).get("pages") or 1)
+        copies = int(item.get("copies") or item.get("requirements", {}).get("copies") or 1)
+        color_mode = (item.get("color_mode") or item.get("requirements", {}).get("color_mode") or "bw").lower()
+        sides = item.get("sides") or item.get("requirements", {}).get("sides") or "single"
+        binding = item.get("binding") or item.get("requirements", {}).get("binding") or "none"
+        file_name = item.get("file_name") or "Document.pdf"
+        file_purged = item.get("file_purged", False) or (status_val in ["ready", "completed"])
+
+        sheets = pages * copies
+        if sides == "double":
+            sheets = ((pages + 1) // 2) * copies
+
+        if status_val in ["printing", "ready", "completed"]:
+            total_pages_printed += (pages * copies)
+            if color_mode == "color":
+                color_pages_printed += (pages * copies)
+            else:
+                bw_pages_printed += (pages * copies)
+
+            # Binding revenue calculation
+            binding_unit = 0.0
+            if binding == "spiral":
+                binding_unit = 30.0
+            elif binding == "soft":
+                binding_unit = 50.0
+            elif binding == "hard":
+                binding_unit = 180.0
+            b_rev = binding_unit * copies
+            binding_revenue += b_rev
+            print_revenue += max(0.0, amount - b_rev)
+
+        # Payment record row
+        payment_records.append({
+            "job_id": job_id,
+            "customer_name": sender_name,
+            "channel": channel,
+            "amount_inr": amount,
+            "payment_status": payment_status,
+            "payment_id": payment_id or "—",
+            "razorpay_order_id": razorpay_order_id or "—",
+            "paid_at": paid_at or "—",
+            "created_at": created_at,
+        })
+
+        # Printout record row
+        printout_records.append({
+            "job_id": job_id,
+            "customer_name": sender_name,
+            "file_name": file_name,
+            "pages": pages,
+            "copies": copies,
+            "total_sheets": sheets,
+            "color_mode": color_mode,
+            "sides": sides,
+            "binding": binding,
+            "total_amount_inr": amount,
+            "status": status_val,
+            "payment_status": payment_status,
+            "file_purged": file_purged,
+            "created_at": created_at,
+            "completed_at": completed_at or "—",
+        })
+
+    # Sort descending
+    payment_records.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+    printout_records.sort(key=lambda x: x.get("created_at") or "", reverse=True)
+
+    return {
+        "summary": {
+            "total_revenue": round(total_revenue, 2),
+            "today_revenue": round(today_revenue, 2),
+            "print_revenue": round(print_revenue, 2),
+            "binding_revenue": round(binding_revenue, 2),
+            "total_orders": len(items),
+            "completed_orders": completed_orders,
+            "queued_orders": queued_orders,
+            "rejected_orders": rejected_orders,
+            "total_pages_printed": total_pages_printed,
+            "bw_pages_printed": bw_pages_printed,
+            "color_pages_printed": color_pages_printed,
+            "average_order_value": round(total_revenue / max(1, completed_orders), 2),
+        },
+        "payment_breakdown": {
+            "razorpay": {"count": razorpay_count, "amount": round(razorpay_amount, 2)},
+            "counter_or_unpaid": {"count": counter_count, "amount": round(counter_amount, 2)},
+        },
+        "channel_breakdown": channel_stats,
+        "payment_records": payment_records,
+        "printout_records": printout_records,
+    }
+
+
+@app.get("/analytics/logs", tags=["Analytics"])
+async def get_system_audit_logs(
+    limit: int = 150,
+    event_type: Optional[str] = None,
+    job_id: Optional[str] = None,
+):
+    """Returns recent structured audit events from memory buffer and audit.jsonl."""
+    logs = audit_logger.get_logs(limit=limit, event_type=event_type, job_id=job_id)
+    return {
+        "total": len(logs),
+        "logs": logs,
     }
 
 

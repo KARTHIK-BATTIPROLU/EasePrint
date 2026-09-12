@@ -1,4 +1,4 @@
-﻿import pytest
+import pytest
 from httpx import AsyncClient, ASGITransport
 from app.pricing import calculate_hyderabad_price
 from app.session_store import session_store
@@ -172,6 +172,36 @@ async def test_fastapi_backward_completion_alert():
         updated_rec = await dynamo.get_record_by_job_id(job_id)
         assert updated_rec["status"] == "ready"
         assert updated_rec["pickup_counter"] == "Counter 2 (Express)"
+
+
+@pytest.mark.asyncio
+async def test_analytics_earnings_endpoint():
+    """Verify GET /analytics/earnings returns revenue, order summary, and records."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        resp = await client.get("/analytics/earnings")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "summary" in data
+        assert "total_revenue" in data["summary"]
+        assert "payment_breakdown" in data
+        assert "payment_records" in data
+        assert "printout_records" in data
+        assert isinstance(data["payment_records"], list)
+        assert isinstance(data["printout_records"], list)
+
+
+@pytest.mark.asyncio
+async def test_analytics_logs_endpoint():
+    """Verify GET /analytics/logs returns system audit trail."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        resp = await client.get("/analytics/logs")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "total" in data
+        assert "logs" in data
+        assert isinstance(data["logs"], list)
 
 
 def test_mangum_handler_callable():

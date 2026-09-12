@@ -39,23 +39,28 @@ export default function Xerox3DViewer() {
     const scene = new THREE.Scene();
     scene.background = null;
 
-    // --- Camera Setup with Plenty of Headroom & No Top Clipping ---
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    const cameraPos = new THREE.Vector3(4.2, 3.4, 5.6);
-    const cameraTarget = new THREE.Vector3(0, 1.0, 0);
+    // --- Responsive Placement: Centered on mobile, Framed cleanly to the right on desktop ---
+    const isMobile = width < 1024;
+    const machinePosX = isMobile ? 0 : 2.2;
+    const targetLookX = isMobile ? 0 : 0.4;
+
+    // --- Camera Setup with Wide Framing & Offset Target ---
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
+    const cameraPos = new THREE.Vector3(isMobile ? 4.2 : 4.6, 3.4, 6.6);
+    const cameraTarget = new THREE.Vector3(targetLookX, 0.9, 0);
     camera.position.copy(cameraPos);
     camera.lookAt(cameraTarget);
 
-    // Ample vertical headroom so the top edge is never cut off
+    // Ample vertical headroom, pulled-back distances, machine framed on right
     const PRESETS = [
-      // 0: Overview - Pulled back, full clearance from top to bottom
-      { pos: new THREE.Vector3(4.2, 3.4, 5.6), target: new THREE.Vector3(0, 1.0, 0) },
-      // 1: Scanner - Elevated look with full upper feeder in frame
-      { pos: new THREE.Vector3(0.0, 3.9, 3.2), target: new THREE.Vector3(0, 2.0, 0) },
-      // 2: Touch HUD - Focused on screen console with full headroom
-      { pos: new THREE.Vector3(2.6, 3.2, 2.8), target: new THREE.Vector3(1.15, 2.3, 0.75) },
-      // 3: Paper Trays - Focused on sliding cassettes and flowing sheets
-      { pos: new THREE.Vector3(2.4, 1.8, 4.2), target: new THREE.Vector3(0, 0.9, 0.4) },
+      // 0: Overview - Balanced wide 3/4 angle, entire machine kiosk framed gracefully
+      { pos: new THREE.Vector3(isMobile ? 4.2 : 5.6, 3.4, 6.8), target: new THREE.Vector3(isMobile ? 0 : 1.2, 0.9, 0) },
+      // 1: Scanner - Distinct top-down angle showcasing the optical scanner & feeder
+      { pos: new THREE.Vector3(isMobile ? 0.0 : 2.0, 5.4, 4.4), target: new THREE.Vector3(isMobile ? 0 : 2.0, 1.8, 0) },
+      // 2: Touch HUD - Focused perspective on the live touchscreen console and glowing LED
+      { pos: new THREE.Vector3(isMobile ? 2.6 : 3.8, 3.2, 3.8), target: new THREE.Vector3(isMobile ? 1.15 : 2.8, 1.7, 0.6) },
+      // 3: Paper Trays - Low ground perspective showcasing the dual cassettes & gliding paper
+      { pos: new THREE.Vector3(isMobile ? 2.4 : 3.6, 1.8, 4.6), target: new THREE.Vector3(isMobile ? 0 : 1.8, 0.7, 0.3) },
     ];
 
     // --- Renderer Setup ---
@@ -122,8 +127,9 @@ export default function Xerox3DViewer() {
 
     // --- Machine Group ---
     const machineGroup = new THREE.Group();
-    // Slightly offset to right on widescreen so it frames behind content
-    machineGroup.position.set(0.6, -0.1, 0);
+    // Scaled down to 70% per user request, positioned cleanly on right side
+    machineGroup.scale.set(0.7, 0.7, 0.7);
+    machineGroup.position.set(machinePosX, -0.15, 0);
     scene.add(machineGroup);
 
     // 1. Base Pedestal
@@ -277,14 +283,14 @@ export default function Xerox3DViewer() {
 
     // 8. Ground Shadow & Ring
     const groundGeo = new THREE.PlaneGeometry(10, 10);
-    const groundMat = new THREE.ShadowMaterial({ opacity: 0.16 });
+    const groundMat = new THREE.ShadowMaterial({ opacity: 0.14 });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.position.y = 0;
+    groundMesh.position.set(machinePosX, -0.15, 0);
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    const ringGeo = new THREE.RingGeometry(1.6, 2.5, 48);
+    const ringGeo = new THREE.RingGeometry(1.1, 1.8, 48);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
@@ -293,7 +299,7 @@ export default function Xerox3DViewer() {
     });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     ringMesh.rotation.x = -Math.PI / 2;
-    ringMesh.position.y = 0.01;
+    ringMesh.position.set(machinePosX, -0.14, 0);
     scene.add(ringMesh);
 
     // --- Studio Lighting ---
@@ -340,16 +346,16 @@ export default function Xerox3DViewer() {
 
       // Smooth Camera & LookAt Interpolation towards Preset
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
-      camera.position.lerp(targetPreset.pos, 0.035);
-      currentLookAt.lerp(targetPreset.target, 0.035);
+      camera.position.lerp(targetPreset.pos, 0.05);
+      currentLookAt.lerp(targetPreset.target, 0.05);
       camera.lookAt(currentLookAt);
 
       // Subtle Ambient Machine Rotation & Floating
       if (activeStageRef.current === 0) {
-        machineGroup.position.y = Math.sin(elapsedTime * 1.5) * 0.03;
-        machineGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.08;
+        machineGroup.position.y = -0.15 + Math.sin(elapsedTime * 1.5) * 0.02;
+        machineGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.06;
       } else {
-        machineGroup.position.y = 0;
+        machineGroup.position.y = -0.15;
         machineGroup.rotation.y = 0;
       }
 

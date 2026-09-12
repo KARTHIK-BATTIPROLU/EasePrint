@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import {
   Printer,
-  CheckCircle,
+  CheckCircle2,
   Clock,
   FileText,
   MessageSquare,
@@ -13,6 +13,7 @@ import {
   RefreshCw,
   SlidersHorizontal,
   ChevronRight,
+  ChevronDown,
   Phone,
   Settings,
   UploadCloud,
@@ -25,6 +26,18 @@ import {
   Search,
   XCircle,
   CreditCard,
+  DollarSign,
+  TrendingUp,
+  Download,
+  ShieldCheck,
+  Activity,
+  Filter,
+  Layers,
+  FileSpreadsheet,
+  Database,
+  Lock,
+  Coins,
+  Copy,
 } from "lucide-react";
 import {
   fetchAllJobs,
@@ -34,20 +47,88 @@ import {
   saveCustomizations,
   uploadKnowledgeFile,
   rejectJob,
+  fetchEarningsAnalytics,
+  fetchSystemLogs,
 } from "../api";
 
+// CSV Download Helper
+function downloadCSV(filename, rows) {
+  if (!rows || !rows.length) return;
+  const headers = Object.keys(rows[0]);
+  const csvContent = [
+    headers.join(","),
+    ...rows.map((row) =>
+      headers
+        .map((header) => {
+          let val = row[header] === null || row[header] === undefined ? "" : String(row[header]);
+          val = val.replace(/"/g, '""');
+          if (val.includes(",") || val.includes("\n") || val.includes('"')) {
+            val = `"${val}"`;
+          }
+          return val;
+        })
+        .join(",")
+    ),
+  ].join("\n");
+
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// JSON Download Helper
+function downloadJSON(filename, data) {
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.setAttribute("href", url);
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
 export default function StaffDashboard() {
+  // Main view navigation: "queue" | "earnings" | "payments" | "printouts" | "logs"
+  const [viewMode, setViewMode] = useState("queue");
+
+  // Jobs state for Live Queue
   const [jobs, setJobs] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingJobs, setLoadingJobs] = useState(true);
   const [filterChannel, setFilterChannel] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
-  const [rejectingJob, setRejectingJob] = useState(null); // jobId
+  const [rejectingJob, setRejectingJob] = useState(null);
   const [rejectReason, setRejectReason] = useState("Unsupported file format or damaged document");
-  const [activePrinting, setActivePrinting] = useState({}); // { jobId: progressPercent }
+  const [activePrinting, setActivePrinting] = useState({});
   const [notificationLog, setNotificationLog] = useState([]);
   const [showCustomizations, setShowCustomizations] = useState(false);
 
-  // Fetch all jobs
+  // Analytics & Earnings state
+  const [analytics, setAnalytics] = useState(null);
+  const [loadingAnalytics, setLoadingAnalytics] = useState(false);
+
+  // Payment Records filters
+  const [paymentSearch, setPaymentSearch] = useState("");
+  const [paymentStatusFilter, setPaymentStatusFilter] = useState("all");
+
+  // Printout Records filters
+  const [printoutSearch, setPrintoutSearch] = useState("");
+  const [printoutStatusFilter, setPrintoutStatusFilter] = useState("all");
+
+  // System Audit Logs state
+  const [logs, setLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+  const [logEventType, setLogEventType] = useState("ALL");
+  const [logSearch, setLogSearch] = useState("");
+  const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
+  const [expandedLogId, setExpandedLogId] = useState(null);
+
+  // Load live jobs
   const loadJobs = async () => {
     try {
       const data = await fetchAllJobs();
@@ -55,17 +136,65 @@ export default function StaffDashboard() {
     } catch (e) {
       console.warn("Could not load jobs:", e);
     } finally {
-      setLoading(false);
+      setLoadingJobs(false);
     }
   };
 
+  // Load analytics & earnings
+  const loadAnalytics = async () => {
+    setLoadingAnalytics(true);
+    try {
+      const data = await fetchEarningsAnalytics();
+      setAnalytics(data);
+    } catch (e) {
+      console.warn("Could not load analytics:", e);
+    } finally {
+      setLoadingAnalytics(false);
+    }
+  };
+
+  // Load system audit logs
+  const loadLogs = async () => {
+    try {
+      const data = await fetchSystemLogs(200, logEventType);
+      setLogs(data.logs || []);
+    } catch (e) {
+      console.warn("Could not load audit logs:", e);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
+
+  // Lifecycle polling based on active view
   useEffect(() => {
     loadJobs();
-    const interval = setInterval(loadJobs, 4000);
-    return () => clearInterval(interval);
+    loadAnalytics();
   }, []);
 
-  // Filter jobs by channel and search term
+  useEffect(() => {
+    let interval;
+    if (viewMode === "queue") {
+      interval = setInterval(loadJobs, 4000);
+    } else if (viewMode === "earnings" || viewMode === "payments" || viewMode === "printouts") {
+      loadAnalytics();
+      interval = setInterval(loadAnalytics, 5000);
+    } else if (viewMode === "logs") {
+      loadLogs();
+      if (autoRefreshLogs) {
+        interval = setInterval(loadLogs, 3000);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [viewMode, autoRefreshLogs, logEventType]);
+
+  // Refresh all current data
+  const handleRefreshCurrent = () => {
+    if (viewMode === "queue") loadJobs();
+    else if (viewMode === "logs") loadLogs();
+    else loadAnalytics();
+  };
+
+  // Filtered jobs for Queue
   const filteredJobs = jobs.filter((j) => {
     const matchesChannel =
       filterChannel === "all" || (j.source_channel || "").toLowerCase() === filterChannel;
@@ -79,7 +208,6 @@ export default function StaffDashboard() {
     );
   });
 
-  // Group into Kanban columns
   const columns = {
     received: filteredJobs.filter((j) => j.status === "received" || j.status === "needs_info"),
     queued: filteredJobs.filter((j) => j.status === "queued"),
@@ -94,6 +222,7 @@ export default function StaffDashboard() {
       await rejectJob(jobId, rejectReason);
       setRejectingJob(null);
       loadJobs();
+      loadAnalytics();
     } catch (e) {
       alert("Failed to reject job: " + e.message);
     }
@@ -101,12 +230,10 @@ export default function StaffDashboard() {
 
   // Virtual Printer Simulation
   const handleSimulatePrint = async (jobId) => {
-    // 1. Move to printing status in DynamoDB
     await updateJobStatus(jobId, "printing", "Virtual printer simulation active");
     setActivePrinting((prev) => ({ ...prev, [jobId]: 10 }));
     loadJobs();
 
-    // 2. Animate progress bar over 6 seconds
     let progress = 10;
     const progressInterval = setInterval(async () => {
       progress += 20;
@@ -120,7 +247,6 @@ export default function StaffDashboard() {
           return next;
         });
 
-        // 3. Mark ready & trigger backward completion notification!
         try {
           const res = await markJobReady(jobId, "Counter 1 (Main)", "Printed via Virtual Printer");
           setNotificationLog((prev) => [
@@ -131,6 +257,7 @@ export default function StaffDashboard() {
             ...prev,
           ]);
           loadJobs();
+          loadAnalytics();
         } catch (e) {
           console.error("Print ready dispatch error:", e);
         }
@@ -142,290 +269,1154 @@ export default function StaffDashboard() {
   const handleMarkCompleted = async (jobId) => {
     await updateJobStatus(jobId, "completed", "Order handed over to student");
     loadJobs();
+    loadAnalytics();
   };
 
+  // Filtered payment records
+  const paymentRecords = (analytics?.payment_records || []).filter((p) => {
+    if (paymentStatusFilter !== "all" && p.payment_status !== paymentStatusFilter) return false;
+    if (!paymentSearch.trim()) return true;
+    const term = paymentSearch.toLowerCase();
+    return (
+      (p.job_id || "").toLowerCase().includes(term) ||
+      (p.customer_name || "").toLowerCase().includes(term) ||
+      (p.payment_id || "").toLowerCase().includes(term)
+    );
+  });
+
+  // Filtered printout records
+  const printoutRecords = (analytics?.printout_records || []).filter((p) => {
+    if (printoutStatusFilter !== "all" && p.status !== printoutStatusFilter) return false;
+    if (!printoutSearch.trim()) return true;
+    const term = printoutSearch.toLowerCase();
+    return (
+      (p.job_id || "").toLowerCase().includes(term) ||
+      (p.customer_name || "").toLowerCase().includes(term) ||
+      (p.file_name || "").toLowerCase().includes(term)
+    );
+  });
+
+  // Filtered audit logs
+  const filteredLogs = logs.filter((l) => {
+    if (logEventType !== "ALL" && l.event_type !== logEventType) return false;
+    if (!logSearch.trim()) return true;
+    const term = logSearch.toLowerCase();
+    return (
+      (l.message || "").toLowerCase().includes(term) ||
+      (l.job_id || "").toLowerCase().includes(term) ||
+      (l.channel || "").toLowerCase().includes(term)
+    );
+  });
+
+  const totalRevDisplay = analytics?.summary?.total_revenue ?? 0;
+  const todayRevDisplay = analytics?.summary?.today_revenue ?? 0;
+  const totalPagesDisplay = analytics?.summary?.total_pages_printed ?? 0;
+
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-      {/* Top Banner & Stats */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* Top Header Banner */}
+      <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row md:items-center md:justify-between gap-4">
         <div>
-          <div className="flex items-center space-x-2">
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight">Staff Print Station & Virtual Printer</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-800">
-              Live Queue
-            </span>
-          </div>
-          <p className="text-sm text-slate-500 mt-1">
-            Monitor multi-channel orders, simulate printer output, and dispatch backward alerts to students.
-          </p>
-        </div>
-
-        {/* Quick Stats Pills */}
-        <div className="flex items-center space-x-3">
-          <div className="px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-center">
-            <div className="text-lg font-black text-slate-800">{jobs.length}</div>
-            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Total</div>
-          </div>
-          <div className="px-4 py-2 bg-sky-50 border border-sky-100 rounded-xl text-center">
-            <div className="text-lg font-black text-sky-700">{columns.queued.length}</div>
-            <div className="text-[10px] uppercase font-bold text-sky-600 tracking-wider">Queued</div>
-          </div>
-          <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl text-center">
-            <div className="text-lg font-black text-amber-700">~{(columns.queued.length + columns.printing.length) * 2}m</div>
-            <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Est. Wait</div>
-          </div>
-          <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
-            <div className="text-lg font-black text-emerald-700">{columns.ready.length}</div>
-            <div className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">Ready</div>
+          <div className="flex items-center space-x-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-md shadow-indigo-500/20">
+              <Printer className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <h1 className="text-2xl font-black text-slate-900 tracking-tight">Staff Print Station & Command</h1>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200 uppercase tracking-wider flex items-center space-x-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>AWS Native</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Multi-channel queue, live virtual printer, earnings ledger, zero-retention privacy, and system audit logs.
+              </p>
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* Filter Tabs, Search & Refresh */}
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-            <span className="text-xs font-bold text-slate-400 px-2 uppercase tracking-wider">Channel:</span>
-            {["all", "whatsapp", "telegram", "web"].map((c) => (
-              <button
-                key={c}
-                onClick={() => setFilterChannel(c)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
-                  filterChannel === c ? "bg-indigo-600 text-white shadow-sm" : "text-slate-600 hover:bg-slate-100"
-                }`}
-              >
-                {c === "all" ? "All Channels" : c}
-              </button>
-            ))}
-          </div>
-
-          {/* Search Box */}
-          <div className="relative">
-            <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by Job ID, Student, or File..."
-              className="pl-9 pr-3 py-2 border border-slate-200 bg-white rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 w-64 shadow-sm"
-            />
-          </div>
-
+        {/* Global Action Buttons */}
+        <div className="flex items-center space-x-2.5">
           <button
             onClick={() => setShowCustomizations(true)}
             className="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-500/20"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>Customizations & Prices</span>
+            <span>AI Persona & Prices</span>
+          </button>
+          <button
+            onClick={handleRefreshCurrent}
+            className="flex items-center space-x-1.5 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors shadow-sm"
+          >
+            <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+            <span>Refresh</span>
           </button>
         </div>
+      </div>
+
+      {/* Main View Switcher Navigation Bar */}
+      <div className="flex flex-wrap items-center gap-2 p-1.5 bg-slate-100/90 rounded-2xl border border-slate-200 shadow-inner">
+        <button
+          onClick={() => setViewMode("queue")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            viewMode === "queue"
+              ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
+        >
+          <Printer className="w-4 h-4" />
+          <span>Live Queue</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-100 text-indigo-800 font-extrabold">
+            {columns.queued.length + columns.printing.length}
+          </span>
+        </button>
 
         <button
-          onClick={loadJobs}
-          className="flex items-center space-x-2 px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-colors shadow-sm"
+          onClick={() => setViewMode("earnings")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            viewMode === "earnings"
+              ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
         >
-          <RefreshCw className="w-3.5 h-3.5" />
-          <span>Refresh Queue</span>
+          <TrendingUp className="w-4 h-4 text-emerald-600" />
+          <span>Earnings Dashboard</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-100 text-emerald-800 font-extrabold">
+            ₹{totalRevDisplay.toFixed(0)}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setViewMode("payments")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            viewMode === "payments"
+              ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
+        >
+          <CreditCard className="w-4 h-4 text-sky-600" />
+          <span>Payment Records</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-sky-100 text-sky-800 font-extrabold">
+            {analytics?.payment_records?.length ?? 0}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setViewMode("printouts")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            viewMode === "printouts"
+              ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
+        >
+          <FileSpreadsheet className="w-4 h-4 text-amber-600" />
+          <span>Printout Records</span>
+          <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-100 text-amber-800 font-extrabold">
+            {totalPagesDisplay} pgs
+          </span>
+        </button>
+
+        <button
+          onClick={() => setViewMode("logs")}
+          className={`flex items-center space-x-2 px-4 py-2.5 rounded-xl text-xs font-bold transition-all ${
+            viewMode === "logs"
+              ? "bg-white text-indigo-700 shadow-sm border border-slate-200"
+              : "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60"
+          }`}
+        >
+          <Activity className="w-4 h-4 text-purple-600" />
+          <span>System Audit Logs</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
         </button>
       </div>
 
-      {/* Notification Toast Log (Backward Alerts) */}
-      {notificationLog.length > 0 && (
-        <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs text-emerald-900 space-y-1">
-          <div className="font-bold flex items-center space-x-1.5">
-            <Send className="w-3.5 h-3.5 text-emerald-600" />
-            <span>Outbound Relay Dispatch Activity:</span>
-          </div>
-          {notificationLog.slice(0, 2).map((log) => (
-            <div key={log.id} className="text-emerald-700 font-mono text-[11px]">
-              • {log.text}
+      {/* ========================================================================= */}
+      {/* VIEW 1: LIVE QUEUE (KANBAN BOARD) */}
+      {/* ========================================================================= */}
+      {viewMode === "queue" && (
+        <div className="space-y-6">
+          {/* Quick Stats Pills */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 text-slate-700 flex items-center justify-center font-black">
+                {jobs.length}
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Total Orders</div>
+                <div className="text-sm font-extrabold text-slate-800">{jobs.length} Jobs Received</div>
+              </div>
             </div>
-          ))}
+
+            <div className="bg-white p-4 rounded-2xl border border-sky-200 shadow-sm flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center font-black">
+                {columns.queued.length}
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-sky-500 uppercase tracking-wider">Queued in Line</div>
+                <div className="text-sm font-extrabold text-sky-900">Ready to Print</div>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-amber-200 shadow-sm flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center font-black">
+                ~{(columns.queued.length + columns.printing.length) * 2}m
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Estimated Wait</div>
+                <div className="text-sm font-extrabold text-amber-900">Queue Throughput</div>
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-emerald-200 shadow-sm flex items-center space-x-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black">
+                {columns.ready.length}
+              </div>
+              <div>
+                <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Ready at Counter</div>
+                <div className="text-sm font-extrabold text-emerald-900">Awaiting Student</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Filter Bar */}
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center space-x-1 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
+                <span className="text-[11px] font-bold text-slate-400 px-2 uppercase tracking-wider">Channel:</span>
+                {["all", "whatsapp", "telegram", "web"].map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setFilterChannel(c)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold capitalize transition-all ${
+                      filterChannel === c
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "text-slate-600 hover:bg-slate-100"
+                    }`}
+                  >
+                    {c === "all" ? "All Channels" : c}
+                  </button>
+                ))}
+              </div>
+
+              {/* Search Box */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  placeholder="Search Job ID, Student, File..."
+                  className="pl-9 pr-3 py-2 border border-slate-200 bg-white rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 w-64 shadow-sm"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Outbound Notification Log Banner */}
+          {notificationLog.length > 0 && (
+            <div className="bg-emerald-50 border border-emerald-200 p-4 rounded-2xl text-xs text-emerald-900 space-y-1 shadow-sm">
+              <div className="font-bold flex items-center space-x-1.5">
+                <Send className="w-3.5 h-3.5 text-emerald-600" />
+                <span>Outbound Backward Relay Dispatch:</span>
+              </div>
+              {notificationLog.slice(0, 2).map((log) => (
+                <div key={log.id} className="text-emerald-700 font-mono text-[11px]">
+                  • {log.text}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Kanban Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Column 1: Received / Needs Info */}
+            <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                  <span>Intake / Inquiry</span>
+                </span>
+                <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                  {columns.received.length}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {columns.received.map((job) => (
+                  <JobCard
+                    key={job.job_id}
+                    job={job}
+                    onReject={(id) => setRejectingJob(id)}
+                    actionButton={
+                      <div className="space-y-1.5 mt-2">
+                        <button
+                          onClick={async () => {
+                            await updateJobStatus(job.job_id, "queued", "Staff manual override to queued");
+                            loadJobs();
+                          }}
+                          className="w-full py-1.5 px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
+                        >
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Approve & Queue</span>
+                        </button>
+                        <button
+                          onClick={() => handleSimulatePrint(job.job_id)}
+                          className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
+                        >
+                          <Play className="w-3.5 h-3.5 fill-current" />
+                          <span>Print Directly</span>
+                        </button>
+                      </div>
+                    }
+                  />
+                ))}
+                {columns.received.length === 0 && <EmptyColumn text="No pending inquiries" />}
+              </div>
+            </div>
+
+            {/* Column 2: Queued (Ready for Printer) */}
+            <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-bold text-sky-700 uppercase tracking-wider flex items-center space-x-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
+                  <span>Queued (Ready)</span>
+                </span>
+                <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                  {columns.queued.length}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {columns.queued.map((job) => (
+                  <JobCard
+                    key={job.job_id}
+                    job={job}
+                    onReject={(id) => setRejectingJob(id)}
+                    actionButton={
+                      <button
+                        onClick={() => handleSimulatePrint(job.job_id)}
+                        className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm transition-all"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Simulate Print</span>
+                      </button>
+                    }
+                  />
+                ))}
+                {columns.queued.length === 0 && <EmptyColumn text="Queue empty" />}
+              </div>
+            </div>
+
+            {/* Column 3: Printing */}
+            <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center space-x-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                  <span>Printing...</span>
+                </span>
+                <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                  {columns.printing.length}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {columns.printing.map((job) => {
+                  const prog = activePrinting[job.job_id] || 40;
+                  return (
+                    <div key={job.job_id} className="bg-white p-3.5 rounded-xl border border-indigo-200 shadow-sm space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-extrabold text-slate-900">{job.job_id}</span>
+                        <span className="text-[10px] font-bold text-indigo-600">{prog}%</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div
+                          className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
+                          style={{ width: `${prog}%` }}
+                        ></div>
+                      </div>
+                      <p className="text-[11px] text-slate-500 italic">Virtual printer processing sheets...</p>
+                    </div>
+                  );
+                })}
+                {columns.printing.length === 0 && <EmptyColumn text="No active prints" />}
+              </div>
+            </div>
+
+            {/* Column 4: Ready for Pickup */}
+            <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center space-x-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                  <span>Ready for Pickup</span>
+                </span>
+                <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                  {columns.ready.length}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {columns.ready.map((job) => (
+                  <JobCard
+                    key={job.job_id}
+                    job={job}
+                    actionButton={
+                      <button
+                        onClick={() => handleMarkCompleted(job.job_id)}
+                        className="w-full mt-2 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Handover & Complete</span>
+                      </button>
+                    }
+                  />
+                ))}
+                {columns.ready.length === 0 && <EmptyColumn text="No prints waiting" />}
+              </div>
+            </div>
+
+            {/* Column 5: Completed */}
+            <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
+                <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+                  <span>Archived / Complete</span>
+                </span>
+                <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                  {columns.completed.length}
+                </span>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                {columns.completed.map((job) => (
+                  <JobCard key={job.job_id} job={job} />
+                ))}
+                {columns.completed.length === 0 && <EmptyColumn text="No completed orders" />}
+              </div>
+            </div>
+          </div>
+
+          {/* Rejected section if any */}
+          {columns.rejected?.length > 0 && (
+            <div className="bg-rose-50/50 p-4 rounded-2xl border border-rose-200">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs font-bold text-rose-800 uppercase tracking-wider flex items-center space-x-2">
+                  <XCircle className="w-4 h-4 text-rose-600" />
+                  <span>Rejected Print Requests ({columns.rejected.length})</span>
+                </span>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3">
+                {columns.rejected.map((job) => (
+                  <JobCard key={job.job_id} job={job} />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
-      {/* Kanban Board Columns */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-        {/* Column 1: Received / Needs Info */}
-        <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
-            <span className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
-              <span>Intake / Needs Info</span>
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
-              {columns.received.length}
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {columns.received.map((job) => (
-              <JobCard
-                key={job.job_id}
-                job={job}
-                onReject={(id) => setRejectingJob(id)}
-                actionButton={
-                  <div className="space-y-1.5 mt-2">
-                    <button
-                      onClick={async () => {
-                        await updateJobStatus(job.job_id, "queued", "Staff manual override to queued");
-                        loadJobs();
-                      }}
-                      className="w-full py-1.5 px-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Approve & Queue</span>
-                    </button>
-                    <button
-                      onClick={() => handleSimulatePrint(job.job_id)}
-                      className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
-                    >
-                      <Play className="w-3.5 h-3.5 fill-current" />
-                      <span>Print Directly</span>
-                    </button>
-                  </div>
-                }
-              />
-            ))}
-            {columns.received.length === 0 && <EmptyColumn text="No pending inquiries" />}
-          </div>
-        </div>
+      {/* ========================================================================= */}
+      {/* VIEW 2: EARNINGS DASHBOARD */}
+      {/* ========================================================================= */}
+      {viewMode === "earnings" && (
+        <div className="space-y-6">
+          {/* Top KPI Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+            {/* Total Revenue */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Total Gross Revenue</span>
+                <span className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold">
+                  ₹
+                </span>
+              </div>
+              <div className="text-3xl font-black text-slate-900 mt-2">
+                ₹{totalRevDisplay.toFixed(2)}
+              </div>
+              <div className="flex items-center space-x-1.5 text-xs text-emerald-600 font-bold mt-1">
+                <TrendingUp className="w-3.5 h-3.5" />
+                <span>Verified Collections</span>
+              </div>
+            </div>
 
-        {/* Column 2: Queued (Ready for Printer) */}
-        <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
-            <span className="text-xs font-bold text-sky-700 uppercase tracking-wider flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-sky-500"></span>
-              <span>Queued (Ready)</span>
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
-              {columns.queued.length}
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {columns.queued.map((job) => (
-              <JobCard
-                key={job.job_id}
-                job={job}
-                onReject={(id) => setRejectingJob(id)}
-                actionButton={
-                  <button
-                    onClick={() => handleSimulatePrint(job.job_id)}
-                    className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm transition-all"
-                  >
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>Simulate Print</span>
-                  </button>
-                }
-              />
-            ))}
-            {columns.queued.length === 0 && <EmptyColumn text="Queue empty" />}
-          </div>
-        </div>
+            {/* Today's Revenue */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Today's Revenue</span>
+                <span className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                  <Clock className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-3xl font-black text-indigo-700 mt-2">
+                ₹{todayRevDisplay.toFixed(2)}
+              </div>
+              <div className="text-xs text-slate-500 font-medium mt-1">Today's Store Turnaround</div>
+            </div>
 
-        {/* Column 3: Printing (Virtual Printer Progress) */}
-        <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
-            <span className="text-xs font-bold text-indigo-700 uppercase tracking-wider flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-indigo-500 animate-pulse"></span>
-              <span>Printing...</span>
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
-              {columns.printing.length}
-            </span>
+            {/* Pages Volume */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pages Printed</span>
+                <span className="w-8 h-8 rounded-xl bg-sky-50 text-sky-600 flex items-center justify-center">
+                  <Printer className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-3xl font-black text-slate-900 mt-2">
+                {totalPagesDisplay}
+              </div>
+              <div className="text-xs text-slate-500 font-semibold mt-1 flex items-center space-x-1">
+                <span>{analytics?.summary?.bw_pages_printed ?? 0} B&W</span>
+                <span>•</span>
+                <span className="text-sky-600">{analytics?.summary?.color_pages_printed ?? 0} Color</span>
+              </div>
+            </div>
+
+            {/* Print vs Binding */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Binding Revenue</span>
+                <span className="w-8 h-8 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
+                  <Tag className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-3xl font-black text-amber-700 mt-2">
+                ₹{(analytics?.summary?.binding_revenue ?? 0).toFixed(2)}
+              </div>
+              <div className="text-xs text-slate-500 font-semibold mt-1">
+                Printing: ₹{(analytics?.summary?.print_revenue ?? 0).toFixed(2)}
+              </div>
+            </div>
+
+            {/* Average Order Value */}
+            <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm relative overflow-hidden">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Avg Order Value</span>
+                <span className="w-8 h-8 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center">
+                  <Coins className="w-4 h-4" />
+                </span>
+              </div>
+              <div className="text-3xl font-black text-purple-700 mt-2">
+                ₹{(analytics?.summary?.average_order_value ?? 0).toFixed(2)}
+              </div>
+              <div className="text-xs text-slate-500 font-semibold mt-1">
+                {analytics?.summary?.completed_orders ?? 0} completed orders
+              </div>
+            </div>
           </div>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {columns.printing.map((job) => {
-              const prog = activePrinting[job.job_id] || 40;
-              return (
-                <div key={job.job_id} className="bg-white p-3.5 rounded-xl border border-indigo-200 shadow-sm space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-extrabold text-slate-900">{job.job_id}</span>
-                    <span className="text-[10px] font-bold text-indigo-600">{prog}%</span>
+
+          {/* Breakdown Grids */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Payment Method Breakdown */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-2">
+                  <CreditCard className="w-5 h-5 text-indigo-600" />
+                  <h3 className="font-extrabold text-sm text-slate-900">Payment Methods Breakdown</h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  Real-Time
+                </span>
+              </div>
+
+              <div className="space-y-4">
+                {/* Razorpay Online */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-800 flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+                      <span>Razorpay Online (UPI/Cards)</span>
+                    </span>
+                    <span className="text-emerald-700 font-extrabold">
+                      ₹{(analytics?.payment_breakdown?.razorpay?.amount ?? 0).toFixed(2)} ({analytics?.payment_breakdown?.razorpay?.count ?? 0})
+                    </span>
                   </div>
                   <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
                     <div
-                      className="bg-indigo-600 h-2 rounded-full transition-all duration-500"
-                      style={{ width: `${prog}%` }}
+                      className="bg-emerald-500 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          totalRevDisplay > 0
+                            ? Math.min(
+                                100,
+                                ((analytics?.payment_breakdown?.razorpay?.amount ?? 0) / totalRevDisplay) * 100
+                              )
+                            : 0
+                        }%`,
+                      }}
                     ></div>
                   </div>
-                  <p className="text-[11px] text-slate-500 italic">Virtual printer processing sheets...</p>
+                </div>
+
+                {/* Counter / Cash */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between text-xs font-bold">
+                    <span className="text-slate-800 flex items-center space-x-1.5">
+                      <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
+                      <span>Counter Cash / Direct Pickup</span>
+                    </span>
+                    <span className="text-amber-700 font-extrabold">
+                      ₹{(analytics?.payment_breakdown?.counter_or_unpaid?.amount ?? 0).toFixed(2)} ({analytics?.payment_breakdown?.counter_or_unpaid?.count ?? 0})
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                    <div
+                      className="bg-amber-400 h-2 rounded-full"
+                      style={{
+                        width: `${
+                          totalRevDisplay > 0
+                            ? Math.min(
+                                100,
+                                ((analytics?.payment_breakdown?.counter_or_unpaid?.amount ?? 0) / totalRevDisplay) * 100
+                              )
+                            : 0
+                        }%`,
+                      }}
+                    ></div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-100 text-xs text-slate-600 space-y-1">
+                <div className="font-bold text-slate-800 flex items-center space-x-1">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                  <span>Settlement Guarantee</span>
+                </div>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Razorpay payments settle with 100% cryptographic checksum verification on webhook signatures before marking print status as complete.
+                </p>
+              </div>
+            </div>
+
+            {/* Channel Metrics */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <div className="flex items-center space-x-2">
+                  <Layers className="w-5 h-5 text-sky-600" />
+                  <h3 className="font-extrabold text-sm text-slate-900">Intake Channel Volume</h3>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-100 text-sky-700">
+                  Multi-Channel
+                </span>
+              </div>
+
+              <div className="space-y-3">
+                {["web", "telegram", "whatsapp"].map((ch) => {
+                  const chData = analytics?.channel_breakdown?.[ch] || { count: 0, revenue: 0 };
+                  const chColors = {
+                    web: "text-purple-700 bg-purple-100 border-purple-200",
+                    telegram: "text-sky-700 bg-sky-100 border-sky-200",
+                    whatsapp: "text-emerald-700 bg-emerald-100 border-emerald-200",
+                  };
+                  return (
+                    <div
+                      key={ch}
+                      className="flex items-center justify-between p-3 rounded-xl border border-slate-100 bg-slate-50/50"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <span
+                          className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border ${
+                            chColors[ch] || "text-slate-700 bg-slate-100"
+                          }`}
+                        >
+                          {ch}
+                        </span>
+                        <span className="text-xs font-bold text-slate-700">{chData.count} Orders</span>
+                      </div>
+                      <span className="text-xs font-black text-slate-900">₹{chData.revenue.toFixed(2)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <p className="text-[11px] text-slate-400 italic">
+                Normalized into a single unified queue via Amazon DynamoDB and ARQ worker engine.
+              </p>
+            </div>
+
+            {/* Quick Export Center */}
+            <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm space-y-4 flex flex-col justify-between">
+              <div>
+                <div className="flex items-center space-x-2 pb-3 border-b border-slate-100">
+                  <Download className="w-5 h-5 text-indigo-600" />
+                  <h3 className="font-extrabold text-sm text-slate-900">Ledger & Data Exports</h3>
+                </div>
+                <p className="text-xs text-slate-500 mt-2">
+                  Generate instant CSV sheets for campus accounting and audit records:
+                </p>
+
+                <div className="space-y-2 mt-4">
+                  <button
+                    onClick={() => downloadCSV(`easeprint_payments_${Date.now()}.csv`, analytics?.payment_records || [])}
+                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-sm"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <CreditCard className="w-4 h-4 text-emerald-600" />
+                      <span>Export Payments Ledger (CSV)</span>
+                    </span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+
+                  <button
+                    onClick={() => downloadCSV(`easeprint_printouts_${Date.now()}.csv`, analytics?.printout_records || [])}
+                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-sm"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <FileSpreadsheet className="w-4 h-4 text-sky-600" />
+                      <span>Export Printout Production (CSV)</span>
+                    </span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+
+                  <button
+                    onClick={() => downloadJSON(`easeprint_audit_logs_${Date.now()}.json`, logs)}
+                    className="w-full flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 transition-colors shadow-sm"
+                  >
+                    <span className="flex items-center space-x-2">
+                      <Database className="w-4 h-4 text-purple-600" />
+                      <span>Export System Audit Logs (JSON)</span>
+                    </span>
+                    <Download className="w-3.5 h-3.5 text-slate-400" />
+                  </button>
+                </div>
+              </div>
+
+              <div className="pt-3 border-t border-slate-100 text-[11px] text-slate-400 font-medium">
+                Records are permanently stored in DynamoDB table: <strong>EasePrintJobs</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 3: PAYMENT RECORDS */}
+      {/* ========================================================================= */}
+      {viewMode === "payments" && (
+        <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+          {/* Header & Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center space-x-2">
+                <CreditCard className="w-5 h-5 text-indigo-600" />
+                <span>Financial & Payment Transactions Ledger</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Every transaction, Razorpay transaction ID, amount, and payment verification status.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Search */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={paymentSearch}
+                  onChange={(e) => setPaymentSearch(e.target.value)}
+                  placeholder="Search Job ID, Student, Pay ID..."
+                  className="pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 w-56 shadow-sm"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+                {["all", "paid", "unpaid"].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setPaymentStatusFilter(s)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize transition-all ${
+                      paymentStatusFilter === s
+                        ? "bg-white text-indigo-700 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => downloadCSV(`payments_ledger_${Date.now()}.csv`, paymentRecords)}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-emerald-500/20"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-3">Job ID</th>
+                  <th className="py-3 px-3">Customer</th>
+                  <th className="py-3 px-3">Channel</th>
+                  <th className="py-3 px-3">Amount (₹)</th>
+                  <th className="py-3 px-3">Status</th>
+                  <th className="py-3 px-3">Razorpay Payment ID</th>
+                  <th className="py-3 px-3">Order ID</th>
+                  <th className="py-3 px-3">Date & Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paymentRecords.map((p, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-3 font-mono font-bold text-indigo-700">{p.job_id}</td>
+                    <td className="py-3 px-3 font-semibold text-slate-800">{p.customer_name}</td>
+                    <td className="py-3 px-3">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-slate-100 text-slate-700 border border-slate-200">
+                        {p.channel}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 font-black text-slate-900">₹{p.amount_inr.toFixed(2)}</td>
+                    <td className="py-3 px-3">
+                      {p.payment_status === "paid" ? (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                          <span>PAID</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+                          <Clock className="w-3 h-3 text-amber-600" />
+                          <span>UNPAID</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 font-mono text-slate-600 text-[11px]">{p.payment_id}</td>
+                    <td className="py-3 px-3 font-mono text-slate-400 text-[11px]">{p.razorpay_order_id}</td>
+                    <td className="py-3 px-3 text-slate-500 text-[11px]">
+                      {p.paid_at !== "—" ? p.paid_at.replace("T", " ").slice(0, 19) : p.created_at?.replace("T", " ").slice(0, 19) || "—"}
+                    </td>
+                  </tr>
+                ))}
+                {paymentRecords.length === 0 && (
+                  <tr>
+                    <td colSpan={8} className="py-8 text-center text-slate-400 text-xs font-medium">
+                      No payment records found matching filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 4: PRINTOUT RECORDS */}
+      {/* ========================================================================= */}
+      {viewMode === "printouts" && (
+        <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+          {/* Header & Filters */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <h2 className="text-lg font-black text-slate-900 tracking-tight flex items-center space-x-2">
+                <FileSpreadsheet className="w-5 h-5 text-indigo-600" />
+                <span>Physical Printout & Production Records</span>
+              </h2>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Audit history of documents printed, binding specs, sheets consumed, and zero-retention shredding status.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Search */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={printoutSearch}
+                  onChange={(e) => setPrintoutSearch(e.target.value)}
+                  placeholder="Search Job ID, File, Student..."
+                  className="pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 w-56 shadow-sm"
+                />
+              </div>
+
+              {/* Status Filter */}
+              <div className="flex items-center space-x-1 bg-slate-100 p-1 rounded-xl">
+                {["all", "ready", "completed", "queued", "rejected"].map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setPrintoutStatusFilter(s)}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-bold capitalize transition-all ${
+                      printoutStatusFilter === s
+                        ? "bg-white text-indigo-700 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+
+              <button
+                onClick={() => downloadCSV(`printouts_ledger_${Date.now()}.csv`, printoutRecords)}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-sky-600 hover:bg-sky-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-sky-500/20"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export CSV</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Table */}
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs border-collapse">
+              <thead>
+                <tr className="border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+                  <th className="py-3 px-3">Job ID</th>
+                  <th className="py-3 px-3">Customer</th>
+                  <th className="py-3 px-3">Document</th>
+                  <th className="py-3 px-3">Specs (Pgs × Copies)</th>
+                  <th className="py-3 px-3">Color Mode</th>
+                  <th className="py-3 px-3">Sides</th>
+                  <th className="py-3 px-3">Binding</th>
+                  <th className="py-3 px-3">Amount (₹)</th>
+                  <th className="py-3 px-3">Job Status</th>
+                  <th className="py-3 px-3">Privacy Purge</th>
+                  <th className="py-3 px-3">Completed Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {printoutRecords.map((r, idx) => (
+                  <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                    <td className="py-3 px-3 font-mono font-bold text-indigo-700">{r.job_id}</td>
+                    <td className="py-3 px-3 font-semibold text-slate-800">{r.customer_name}</td>
+                    <td className="py-3 px-3 max-w-[160px] truncate text-slate-600" title={r.file_name}>
+                      {r.file_name}
+                    </td>
+                    <td className="py-3 px-3 font-semibold text-slate-700">
+                      {r.pages} pgs × {r.copies} cp ({r.total_sheets} sheets)
+                    </td>
+                    <td className="py-3 px-3">
+                      <span
+                        className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          r.color_mode === "color"
+                            ? "bg-purple-100 text-purple-700 border border-purple-200"
+                            : "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {r.color_mode}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3 capitalize text-slate-600">{r.sides}</td>
+                    <td className="py-3 px-3">
+                      {r.binding && r.binding !== "none" ? (
+                        <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200 capitalize">
+                          {r.binding}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 font-black text-slate-900">₹{r.total_amount_inr.toFixed(2)}</td>
+                    <td className="py-3 px-3">
+                      <span
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                          r.status === "ready" || r.status === "completed"
+                            ? "bg-emerald-100 text-emerald-800"
+                            : r.status === "rejected"
+                            ? "bg-rose-100 text-rose-800"
+                            : "bg-sky-100 text-sky-800"
+                        }`}
+                      >
+                        {r.status}
+                      </span>
+                    </td>
+                    <td className="py-3 px-3">
+                      {r.file_purged ? (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          <Lock className="w-2.5 h-2.5 text-emerald-600" />
+                          <span>🔒 Shredded</span>
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-600">
+                          <span>Active</span>
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-3 px-3 text-slate-500 text-[11px]">
+                      {r.completed_at !== "—" ? r.completed_at.replace("T", " ").slice(0, 19) : "—"}
+                    </td>
+                  </tr>
+                ))}
+                {printoutRecords.length === 0 && (
+                  <tr>
+                    <td colSpan={11} className="py-8 text-center text-slate-400 text-xs font-medium">
+                      No printout records found matching filters.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* VIEW 5: SYSTEM AUDIT LOGS ("LOGS FOR EVERYTHING") */}
+      {/* ========================================================================= */}
+      {viewMode === "logs" && (
+        <div className="space-y-4 bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+          {/* Header & Controls */}
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 pb-4 border-b border-slate-100">
+            <div>
+              <div className="flex items-center space-x-2">
+                <Activity className="w-5 h-5 text-purple-600" />
+                <h2 className="text-lg font-black text-slate-900 tracking-tight">Real-Time System Audit Trail</h2>
+                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 border border-purple-200">
+                  Append-Only
+                </span>
+              </div>
+              <p className="text-xs text-slate-500 mt-0.5">
+                Audit logs for every intake event, AI decision, Razorpay payment, zero-retention S3 purge, and relay notification.
+              </p>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2.5">
+              {/* Auto-refresh toggle */}
+              <label className="flex items-center space-x-1.5 text-xs font-bold text-slate-600 cursor-pointer bg-slate-100 px-3 py-1.5 rounded-xl">
+                <input
+                  type="checkbox"
+                  checked={autoRefreshLogs}
+                  onChange={(e) => setAutoRefreshLogs(e.target.checked)}
+                  className="rounded text-indigo-600 focus:ring-indigo-500"
+                />
+                <span className="flex items-center space-x-1">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span>Live Auto-Refresh (3s)</span>
+                </span>
+              </label>
+
+              {/* Search */}
+              <div className="relative">
+                <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  value={logSearch}
+                  onChange={(e) => setLogSearch(e.target.value)}
+                  placeholder="Search logs or Job ID..."
+                  className="pl-9 pr-3 py-1.5 border border-slate-200 rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 w-52 shadow-sm"
+                />
+              </div>
+
+              <button
+                onClick={() => downloadJSON(`audit_logs_${Date.now()}.json`, logs)}
+                className="flex items-center space-x-1 px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-purple-500/20"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Export JSON</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Event Type Filter Pills */}
+          <div className="flex flex-wrap gap-1.5 pb-2">
+            {[
+              "ALL",
+              "ORDER_INTAKE",
+              "PAYMENT_INTENT",
+              "PAYMENT_SUCCESS",
+              "STATUS_CHANGE",
+              "PRINT_READY",
+              "PRIVACY_SHRED",
+              "NOTIFICATION_DISPATCH",
+              "ORDER_REJECTED",
+              "FILE_UPLOAD",
+              "AI_CHAT",
+            ].map((type) => (
+              <button
+                key={type}
+                onClick={() => setLogEventType(type)}
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
+                  logEventType === type
+                    ? "bg-slate-900 text-white shadow-sm"
+                    : "bg-slate-100 text-slate-600 hover:bg-slate-200/80"
+                }`}
+              >
+                {type}
+              </button>
+            ))}
+          </div>
+
+          {/* Log Stream Cards */}
+          <div className="space-y-2.5 max-h-[620px] overflow-y-auto pr-1">
+            {filteredLogs.map((entry) => {
+              const eventColors = {
+                ORDER_INTAKE: "bg-indigo-100 text-indigo-800 border-indigo-200",
+                PAYMENT_INTENT: "bg-amber-100 text-amber-800 border-amber-200",
+                PAYMENT_SUCCESS: "bg-emerald-100 text-emerald-800 border-emerald-200",
+                STATUS_CHANGE: "bg-sky-100 text-sky-800 border-sky-200",
+                PRINT_READY: "bg-blue-100 text-blue-800 border-blue-200",
+                PRIVACY_SHRED: "bg-purple-100 text-purple-800 border-purple-200",
+                NOTIFICATION_DISPATCH: "bg-teal-100 text-teal-800 border-teal-200",
+                ORDER_REJECTED: "bg-rose-100 text-rose-800 border-rose-200",
+                FILE_UPLOAD: "bg-slate-100 text-slate-800 border-slate-300",
+                AI_CHAT: "bg-cyan-100 text-cyan-800 border-cyan-200",
+              };
+
+              const isExpanded = expandedLogId === entry.id;
+
+              return (
+                <div
+                  key={entry.id}
+                  className="bg-slate-50/70 hover:bg-slate-50 border border-slate-200/90 rounded-2xl p-3.5 transition-colors space-y-2 shadow-xs"
+                >
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span
+                        className={`px-2 py-0.5 rounded-md text-[10px] font-extrabold uppercase border tracking-wider ${
+                          eventColors[entry.event_type] || "bg-slate-200 text-slate-800"
+                        }`}
+                      >
+                        {entry.event_type}
+                      </span>
+                      {entry.job_id && (
+                        <span className="font-mono text-[11px] font-bold text-slate-800 bg-white px-2 py-0.5 rounded-md border border-slate-200">
+                          {entry.job_id}
+                        </span>
+                      )}
+                      <span className="text-[10px] font-bold uppercase text-slate-500 bg-white px-1.5 py-0.5 rounded border border-slate-200">
+                        {entry.channel}
+                      </span>
+                    </div>
+
+                    <span className="text-[11px] font-mono text-slate-400">
+                      {entry.timestamp?.replace("T", " ").slice(0, 19) || ""}
+                    </span>
+                  </div>
+
+                  <p className="text-xs font-semibold text-slate-800 leading-relaxed">
+                    {entry.message}
+                  </p>
+
+                  {/* Collapsible Details JSON Payload */}
+                  {entry.details && Object.keys(entry.details).length > 0 && (
+                    <div className="pt-1">
+                      <button
+                        onClick={() => setExpandedLogId(isExpanded ? null : entry.id)}
+                        className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 flex items-center space-x-1 transition-colors"
+                      >
+                        <span>{isExpanded ? "Hide Structured Payload" : "Show Structured Payload"}</span>
+                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                      </button>
+
+                      {isExpanded && (
+                        <pre className="mt-2 p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto leading-normal">
+                          {JSON.stringify(entry.details, null, 2)}
+                        </pre>
+                      )}
+                    </div>
+                  )}
                 </div>
               );
             })}
-            {columns.printing.length === 0 && <EmptyColumn text="No jobs active" />}
+
+            {filteredLogs.length === 0 && (
+              <div className="py-12 text-center text-slate-400 text-xs font-medium border-2 border-dashed border-slate-200 rounded-2xl">
+                No audit log events match selected filters.
+              </div>
+            )}
           </div>
         </div>
-
-        {/* Column 4: Ready for Pickup */}
-        <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
-            <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
-              <span>Ready for Pickup</span>
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
-              {columns.ready.length}
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {columns.ready.map((job) => (
-              <JobCard
-                key={job.job_id}
-                job={job}
-                actionButton={
-                  <button
-                    onClick={() => handleMarkCompleted(job.job_id)}
-                    className="w-full mt-2 py-1.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
-                  >
-                    <Check className="w-3.5 h-3.5" />
-                    <span>Handover & Complete</span>
-                  </button>
-                }
-              />
-            ))}
-            {columns.ready.length === 0 && <EmptyColumn text="No prints waiting" />}
-          </div>
-        </div>
-
-        {/* Column 5: Completed */}
-        <div className="bg-slate-100/70 p-3.5 rounded-2xl border border-slate-200/80 flex flex-col h-[680px]">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-200 mb-3">
-            <span className="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center space-x-1.5">
-              <span className="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
-              <span>Archived / Completed</span>
-            </span>
-            <span className="text-xs font-bold text-slate-500 bg-white px-2 py-0.5 rounded-full shadow-sm">
-              {columns.completed.length}
-            </span>
-          </div>
-          <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-            {columns.completed.map((job) => (
-              <JobCard key={job.job_id} job={job} />
-            ))}
-            {columns.completed.length === 0 && <EmptyColumn text="No archived orders" />}
-          </div>
-        </div>
-
-        {/* Column 6: Rejected */}
-        {columns.rejected?.length > 0 && (
-          <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200/80 flex flex-col h-[680px]">
-            <div className="flex items-center justify-between pb-3 border-b border-rose-200 mb-3">
-              <span className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center space-x-1.5">
-                <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
-                <span>Rejected Orders</span>
-              </span>
-              <span className="text-xs font-bold text-rose-700 bg-white px-2 py-0.5 rounded-full shadow-sm">
-                {columns.rejected.length}
-              </span>
-            </div>
-            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
-              {columns.rejected.map((job) => (
-                <JobCard key={job.job_id} job={job} />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      )}
 
       {/* Reject Order Reason Modal */}
       {rejectingJob && (
@@ -495,10 +1486,14 @@ export default function StaffDashboard() {
         </div>
       )}
 
+      {/* Store Customizations & AI Persona Modal */}
       <CustomizationsModal
         isOpen={showCustomizations}
         onClose={() => setShowCustomizations(false)}
-        onSaved={loadJobs}
+        onSaved={() => {
+          loadJobs();
+          loadAnalytics();
+        }}
       />
     </div>
   );
@@ -512,7 +1507,7 @@ function EmptyColumn({ text }) {
   );
 }
 
-function JobCard({ job, actionButton }) {
+function JobCard({ job, actionButton, onReject }) {
   const channelColors = {
     whatsapp: "bg-emerald-100 text-emerald-800 border-emerald-200",
     telegram: "bg-sky-100 text-sky-800 border-sky-200",

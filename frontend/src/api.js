@@ -129,3 +129,21 @@ export async function rejectJob(jobId, reason, staffNotes = "") {
   if (!res.ok) throw new Error("Failed to reject job");
   return res.json();
 }
+
+export async function fetchEarningsAnalytics() {
+  const res = await fetch(`${BASE_URL}/analytics/earnings`);
+  if (!res.ok) throw new Error("Failed to fetch earnings analytics");
+  return res.json();
+}
+
+export async function fetchSystemLogs(limit = 150, eventType = null, jobId = null) {
+  const params = new URLSearchParams();
+  if (limit) params.append("limit", limit);
+  if (eventType && eventType !== "ALL") params.append("event_type", eventType);
+  if (jobId) params.append("job_id", jobId);
+
+  const res = await fetch(`${BASE_URL}/analytics/logs?${params.toString()}`);
+  if (!res.ok) throw new Error("Failed to fetch system logs");
+  return res.json();
+}
+
