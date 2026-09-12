@@ -49,6 +49,10 @@ class StoreCustomizations(BaseModel):
         default="Express turnaround under 10 minutes. For orders above ₹200, free soft binding is provided upon request.",
         description="Specific custom promotion or shop rules"
     )
+    persona: str = Field(
+        default="Friendly, efficient, and student-focused campus Xerox assistant with local Hyderabad warmth. Explains print options clearly, concisely, and patiently.",
+        description="Active AI personality and communication tone (default base persona with optional user customization)"
+    )
     last_updated: Optional[str] = None
 
 
@@ -148,6 +152,9 @@ class CustomizationManager:
                 docs_summary += f"Document [{doc.get('name', 'Knowledge Doc')}]:\n{doc.get('content', '')}\n\n"
 
         return f"""
+--- AI ASSISTANT PERSONA & COMMUNICATION STYLE ---
+Active Persona: {config.persona}
+
 --- STORE IDENTITY & KNOWLEDGE BASE ---
 Store Name: {config.store_name}
 Business Context:

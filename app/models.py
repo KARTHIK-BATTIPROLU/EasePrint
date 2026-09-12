@@ -17,6 +17,24 @@ class JobStatus(str, Enum):
     PROCESSING = "processing"
     READY = "ready"
     COMPLETED = "completed"
+    REJECTED = "rejected"
+
+
+class CreateOrderRequest(BaseModel):
+    job_id: Optional[str] = None
+    amount_inr: float = Field(..., gt=0, description="Amount in Indian Rupees")
+
+
+class VerifyPaymentRequest(BaseModel):
+    job_id: str
+    razorpay_payment_id: str
+    razorpay_order_id: Optional[str] = None
+    razorpay_signature: Optional[str] = None
+
+
+class RejectJobRequest(BaseModel):
+    reason: str = Field(default="Rejected by staff", description="Reason for rejection")
+    staff_notes: Optional[str] = None
 
 
 class ColorMode(str, Enum):

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from "react";
 import Navbar from "./components/Navbar";
+import LandingPage from "./pages/LandingPage";
 import StudentPortal from "./pages/StudentPortal";
 import StaffDashboard from "./pages/StaffDashboard";
 
 export default function App() {
   const getInitialTab = () => {
     if (typeof window !== "undefined") {
-      if (window.location.pathname.includes("staff")) return "staff";
+      const path = window.location.pathname;
+      if (path.includes("staff")) return "staff";
+      if (path.includes("student")) return "student";
     }
-    return "student";
+    return "landing";
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
@@ -16,25 +19,36 @@ export default function App() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
-      window.history.pushState(null, "", `/${tab}`);
+      const targetPath = tab === "landing" ? "/" : `/${tab}`;
+      window.history.pushState(null, "", targetPath);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   };
 
   useEffect(() => {
     const onPopState = () => {
-      setActiveTab(window.location.pathname.includes("staff") ? "staff" : "student");
+      const path = window.location.pathname;
+      if (path.includes("staff")) {
+        setActiveTab("staff");
+      } else if (path.includes("student")) {
+        setActiveTab("student");
+      } else {
+        setActiveTab("landing");
+      }
     };
     window.addEventListener("popstate", onPopState);
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 font-sans">
+    <div className="min-h-screen flex flex-col bg-slate-950 font-sans text-slate-100">
       <Navbar activeTab={activeTab} setActiveTab={handleTabChange} />
       <main className="flex-1">
-        {activeTab === "student" ? <StudentPortal /> : <StaffDashboard />}
+        {activeTab === "landing" && <LandingPage onSelectPortal={handleTabChange} />}
+        {activeTab === "student" && <StudentPortal />}
+        {activeTab === "staff" && <StaffDashboard />}
       </main>
-      <footer className="bg-white border-t border-slate-200 py-6 mt-12 text-center text-xs text-slate-500">
+      <footer className="bg-slate-950 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>EasePrint © 2026 — Omnichannel Stationery & Print Station (Hyderabad, Telangana)</span>
           <span className="text-slate-400">Powered by Amazon Bedrock, DynamoDB, ElastiCache, S3 & ARQ</span>

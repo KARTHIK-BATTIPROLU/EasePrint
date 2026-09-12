@@ -45,6 +45,7 @@ class DynamoDBClient:
         self.is_configured = bool(
             settings.AWS_ACCESS_KEY_ID or self.endpoint_url
         )
+        self._pk_name = "job_id"
 
         if self.is_configured:
             boto_kwargs: Dict[str, Any] = {
@@ -58,6 +59,12 @@ class DynamoDBClient:
 
             self.dynamodb = boto3.resource("dynamodb", **boto_kwargs)
             self.table = self.dynamodb.Table(self.table_name)
+            try:
+                # Detect whether table uses 'userID' or 'job_id' as partition key
+                if self.table.key_schema:
+                    self._pk_name = self.table.key_schema[0]["AttributeName"]
+            except Exception:
+                pass
         else:
             logger.warning(
                 "DynamoDB is not configured (missing AWS credentials or DYNAMODB_ENDPOINT_URL). "
@@ -65,6 +72,10 @@ class DynamoDBClient:
             )
             self.dynamodb = None
             self.table = None
+
+    @property
+    def pk_name(self) -> str:
+        return getattr(self, "_pk_name", "job_id")
 
     async def ensure_table_exists(self) -> None:
         """Create the table if it does not exist (useful for DynamoDB Local)."""
@@ -74,7 +85,9 @@ class DynamoDBClient:
         def _sync_ensure():
             try:
                 self.table.load()
-                logger.info(f"DynamoDB table '{self.table_name}' verified.")
+                if self.table.key_schema:
+                    self._pk_name = self.table.key_schema[0]["AttributeName"]
+                logger.info(f"DynamoDB table '{self.table_name}' verified (partition key: '{self.pk_name}').")
             except ClientError as exc:
                 if exc.response["Error"]["Code"] == "ResourceNotFoundException":
                     logger.info(f"Creating DynamoDB table '{self.table_name}'...")
@@ -85,6 +98,7 @@ class DynamoDBClient:
                         BillingMode="PAY_PER_REQUEST",
                     )
                     table.meta.client.get_waiter("table_exists").wait(TableName=self.table_name)
+                    self._pk_name = "job_id"
                     logger.info(f"DynamoDB table '{self.table_name}' created successfully.")
                 else:
                     logger.error(f"Error checking DynamoDB table: {exc}")
@@ -93,13 +107,13 @@ class DynamoDBClient:
         await asyncio.to_thread(_sync_ensure)
 
     async def get_record_by_job_id(self, job_id: str) -> Optional[Dict[str, Any]]:
-        """Fetch a job item by job_id."""
+        """Fetch a job item by job_id (supports either job_id or userID partition key)."""
         if not self.is_configured or not self.table:
             return _mock_dynamodb_store.get(job_id)
 
         def _sync_get():
             try:
-                response = self.table.get_item(Key={"job_id": job_id})
+                response = self.table.get_item(Key={self.pk_name: job_id})
                 raw = response.get("Item")
                 return _deserialize_from_dynamodb(raw) if raw else None
             except ClientError as exc:
@@ -135,7 +149,7 @@ class DynamoDBClient:
         def _sync_update():
             try:
                 self.table.update_item(
-                    Key={"job_id": job_id},
+                    Key={self.pk_name: job_id},
                     UpdateExpression=update_expression,
                     ExpressionAttributeNames=expr_attr_names,
                     ExpressionAttributeValues=expr_attr_values,
@@ -210,6 +224,8 @@ class DynamoDBClient:
     async def create_or_init_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """Create or initialize job item in DynamoDB with 24-hour timed buffer TTL."""
         job_id = job_data["job_id"]
+        # Ensure both keys exist for cross-compatibility between n8n and FastAPI
+        job_data["userID"] = job_id
         now_epoch = int(time.time())
         if "expires_at" not in job_data:
             job_data["expires_at"] = now_epoch + 86400  # 24-hour safety buffer
@@ -225,14 +241,14 @@ class DynamoDBClient:
             try:
                 self.table.put_item(
                     Item=sanitized,
-                    ConditionExpression="attribute_not_exists(job_id)"
+                    ConditionExpression=f"attribute_not_exists({self.pk_name})"
                 )
                 logger.info(f"Initialized new job record in DynamoDB for job {job_id}.")
                 return job_data
             except ClientError as exc:
                 if exc.response["Error"]["Code"] == "ConditionalCheckFailedException":
                     logger.info(f"Job {job_id} already exists in DynamoDB.")
-                    res = self.table.get_item(Key={"job_id": job_id}).get("Item", job_data)
+                    res = self.table.get_item(Key={self.pk_name: job_id}).get("Item", job_data)
                     return _deserialize_from_dynamodb(res)
                 logger.error(f"Failed to create DynamoDB item for job {job_id}: {exc}")
                 raise

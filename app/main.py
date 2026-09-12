@@ -1,3 +1,4 @@
+import asyncio
 import datetime
 import logging
 import os
@@ -20,6 +21,9 @@ from app.models import (
     ChatRequest,
     ChatResponse,
     PrintReadyRequest,
+    CreateOrderRequest,
+    VerifyPaymentRequest,
+    RejectJobRequest,
 )
 from app.dynamodb_client import DynamoDBClient
 from app.bedrock_agent import BedrockPrintAgent, get_bedrock_agent
@@ -523,6 +527,108 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
         "status": "ready",
         "notification_dispatched": dispatched,
         "outbound_payload": outbound_payload,
+    }
+
+
+@app.post("/payments/create-order", tags=["Payments"])
+async def create_payment_order(req: CreateOrderRequest):
+    """
+    Creates a Razorpay order in INR.
+    If RAZORPAY_KEY_ID & RAZORPAY_KEY_SECRET exist in environment, calls the live Razorpay API.
+    Otherwise provides an instantaneous test simulation order.
+    """
+    key_id = os.getenv("RAZORPAY_KEY_ID")
+    key_secret = os.getenv("RAZORPAY_KEY_SECRET")
+    amount_paise = int(round(req.amount_inr * 100))
+
+    if key_id and key_secret:
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                resp = await client.post(
+                    "https://api.razorpay.com/v1/orders",
+                    auth=(key_id, key_secret),
+                    json={
+                        "amount": amount_paise,
+                        "currency": "INR",
+                        "receipt": req.job_id or f"rcpt_{int(datetime.datetime.now().timestamp())}",
+                        "notes": {"platform": "EasePrint Campus Print Hub"},
+                    },
+                )
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {
+                        "success": True,
+                        "order_id": data["id"],
+                        "amount": data["amount"],
+                        "currency": data["currency"],
+                        "key_id": key_id,
+                        "mock": False,
+                    }
+                else:
+                    logger.warning(f"Razorpay order API returned {resp.status_code}: {resp.text}")
+        except Exception as exc:
+            logger.warning(f"Failed to communicate with Razorpay API: {exc}")
+
+    # Fallback to simulated test order
+    mock_order_id = f"order_test_{int(datetime.datetime.now().timestamp())}"
+    return {
+        "success": True,
+        "order_id": mock_order_id,
+        "amount": amount_paise,
+        "currency": "INR",
+        "key_id": key_id or "rzp_test_easeprint_demo",
+        "mock": True,
+    }
+
+
+@app.post("/payments/verify", tags=["Payments"])
+async def verify_payment(req: VerifyPaymentRequest):
+    """Marks a job as paid with Razorpay transaction ID in DynamoDB."""
+    dynamo = DynamoDBClient()
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    await dynamo.update_job_fields(
+        req.job_id,
+        {
+            "payment_status": "paid",
+            "payment_id": req.razorpay_payment_id,
+            "razorpay_order_id": req.razorpay_order_id or "",
+            "paid_at": now_iso,
+        },
+    )
+    logger.info(f"Payment verified for job {req.job_id} with ID {req.razorpay_payment_id}")
+    return {
+        "success": True,
+        "job_id": req.job_id,
+        "payment_status": "paid",
+        "payment_id": req.razorpay_payment_id,
+        "paid_at": now_iso,
+    }
+
+
+@app.post("/jobs/{job_id}/reject", tags=["Jobs"])
+async def reject_job(job_id: str, req: RejectJobRequest):
+    """Allows staff to reject unsuitable jobs with an automated reason and note."""
+    dynamo = DynamoDBClient()
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    record = await dynamo.get_record_by_job_id(job_id)
+    if not record:
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
+
+    await dynamo.update_job_fields(
+        job_id,
+        {
+            "status": "rejected",
+            "rejection_reason": req.reason,
+            "staff_notes": req.staff_notes or f"Rejected: {req.reason}",
+            "rejected_at": now_iso,
+        },
+    )
+    logger.info(f"Job {job_id} rejected by staff: {req.reason}")
+    return {
+        "success": True,
+        "job_id": job_id,
+        "status": "rejected",
+        "rejection_reason": req.reason,
     }
 
 

@@ -22,6 +22,9 @@ import {
   BookOpen,
   Tag,
   Sparkles,
+  Search,
+  XCircle,
+  CreditCard,
 } from "lucide-react";
 import {
   fetchAllJobs,
@@ -30,12 +33,16 @@ import {
   fetchCustomizations,
   saveCustomizations,
   uploadKnowledgeFile,
+  rejectJob,
 } from "../api";
 
 export default function StaffDashboard() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterChannel, setFilterChannel] = useState("all");
+  const [searchTerm, setSearchTerm] = useState("");
+  const [rejectingJob, setRejectingJob] = useState(null); // jobId
+  const [rejectReason, setRejectReason] = useState("Unsupported file format or damaged document");
   const [activePrinting, setActivePrinting] = useState({}); // { jobId: progressPercent }
   const [notificationLog, setNotificationLog] = useState([]);
   const [showCustomizations, setShowCustomizations] = useState(false);
@@ -58,10 +65,18 @@ export default function StaffDashboard() {
     return () => clearInterval(interval);
   }, []);
 
-  // Filter jobs by channel
+  // Filter jobs by channel and search term
   const filteredJobs = jobs.filter((j) => {
-    if (filterChannel === "all") return true;
-    return (j.source_channel || "").toLowerCase() === filterChannel;
+    const matchesChannel =
+      filterChannel === "all" || (j.source_channel || "").toLowerCase() === filterChannel;
+    if (!matchesChannel) return false;
+    if (!searchTerm.trim()) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (j.job_id || "").toLowerCase().includes(term) ||
+      (j.sender_name || "").toLowerCase().includes(term) ||
+      (j.file_name || "").toLowerCase().includes(term)
+    );
   });
 
   // Group into Kanban columns
@@ -71,6 +86,17 @@ export default function StaffDashboard() {
     printing: filteredJobs.filter((j) => j.status === "printing"),
     ready: filteredJobs.filter((j) => j.status === "ready"),
     completed: filteredJobs.filter((j) => j.status === "completed"),
+    rejected: filteredJobs.filter((j) => j.status === "rejected"),
+  };
+
+  const handleConfirmReject = async (jobId) => {
+    try {
+      await rejectJob(jobId, rejectReason);
+      setRejectingJob(null);
+      loadJobs();
+    } catch (e) {
+      alert("Failed to reject job: " + e.message);
+    }
   };
 
   // Virtual Printer Simulation
@@ -144,6 +170,10 @@ export default function StaffDashboard() {
             <div className="text-lg font-black text-sky-700">{columns.queued.length}</div>
             <div className="text-[10px] uppercase font-bold text-sky-600 tracking-wider">Queued</div>
           </div>
+          <div className="px-4 py-2 bg-amber-50 border border-amber-100 rounded-xl text-center">
+            <div className="text-lg font-black text-amber-700">~{(columns.queued.length + columns.printing.length) * 2}m</div>
+            <div className="text-[10px] uppercase font-bold text-amber-600 tracking-wider">Est. Wait</div>
+          </div>
           <div className="px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-xl text-center">
             <div className="text-lg font-black text-emerald-700">{columns.ready.length}</div>
             <div className="text-[10px] uppercase font-bold text-emerald-600 tracking-wider">Ready</div>
@@ -151,7 +181,7 @@ export default function StaffDashboard() {
         </div>
       </div>
 
-      {/* Filter Tabs & Refresh */}
+      {/* Filter Tabs, Search & Refresh */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center space-x-2 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
@@ -167,6 +197,18 @@ export default function StaffDashboard() {
                 {c === "all" ? "All Channels" : c}
               </button>
             ))}
+          </div>
+
+          {/* Search Box */}
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-400" />
+            <input
+              type="text"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              placeholder="Search by Job ID, Student, or File..."
+              className="pl-9 pr-3 py-2 border border-slate-200 bg-white rounded-xl text-xs font-semibold focus:ring-2 focus:ring-indigo-500 w-64 shadow-sm"
+            />
           </div>
 
           <button
@@ -220,6 +262,7 @@ export default function StaffDashboard() {
               <JobCard
                 key={job.job_id}
                 job={job}
+                onReject={(id) => setRejectingJob(id)}
                 actionButton={
                   <div className="space-y-1.5 mt-2">
                     <button
@@ -263,6 +306,7 @@ export default function StaffDashboard() {
               <JobCard
                 key={job.job_id}
                 job={job}
+                onReject={(id) => setRejectingJob(id)}
                 actionButton={
                   <button
                     onClick={() => handleSimulatePrint(job.job_id)}
@@ -361,7 +405,95 @@ export default function StaffDashboard() {
             {columns.completed.length === 0 && <EmptyColumn text="No archived orders" />}
           </div>
         </div>
+
+        {/* Column 6: Rejected */}
+        {columns.rejected?.length > 0 && (
+          <div className="bg-rose-50/60 p-3.5 rounded-2xl border border-rose-200/80 flex flex-col h-[680px]">
+            <div className="flex items-center justify-between pb-3 border-b border-rose-200 mb-3">
+              <span className="text-xs font-bold text-rose-700 uppercase tracking-wider flex items-center space-x-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+                <span>Rejected Orders</span>
+              </span>
+              <span className="text-xs font-bold text-rose-700 bg-white px-2 py-0.5 rounded-full shadow-sm">
+                {columns.rejected.length}
+              </span>
+            </div>
+            <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+              {columns.rejected.map((job) => (
+                <JobCard key={job.job_id} job={job} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Reject Order Reason Modal */}
+      {rejectingJob && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl max-w-md w-full border border-slate-200 shadow-2xl p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-sm text-slate-900 flex items-center space-x-2">
+                <XCircle className="w-4 h-4 text-rose-600" />
+                <span>Reject Order #{rejectingJob}</span>
+              </h3>
+              <button
+                onClick={() => setRejectingJob(null)}
+                className="w-7 h-7 rounded-full hover:bg-slate-100 text-slate-400 flex items-center justify-center"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Select a reason for rejecting this print request. The student will be notified and the job marked as rejected.
+            </p>
+
+            <div className="space-y-2">
+              {[
+                "Unsupported file format or damaged document",
+                "Paper stock or binding materials out of stock",
+                "Page count / color specifications mismatch",
+                "Payment verification failed / unpaid request",
+                "Violates campus academic printing policy",
+              ].map((r) => (
+                <label
+                  key={r}
+                  className={`flex items-center space-x-2 p-2.5 rounded-xl border text-xs cursor-pointer transition-colors ${
+                    rejectReason === r
+                      ? "border-rose-500 bg-rose-50/50 text-rose-900 font-bold"
+                      : "border-slate-200 hover:bg-slate-50 text-slate-700"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="rejectReason"
+                    value={r}
+                    checked={rejectReason === r}
+                    onChange={(e) => setRejectReason(e.target.value)}
+                    className="text-rose-600 focus:ring-rose-500"
+                  />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+
+            <div className="flex items-center space-x-3 pt-2">
+              <button
+                onClick={() => setRejectingJob(null)}
+                className="flex-1 py-2 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleConfirmReject(rejectingJob)}
+                className="flex-1 py-2 text-xs font-bold text-white bg-rose-600 hover:bg-rose-500 rounded-xl shadow-sm transition-all"
+              >
+                Confirm Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <CustomizationsModal
         isOpen={showCustomizations}
@@ -432,11 +564,23 @@ function JobCard({ job, actionButton }) {
         )}
       </div>
 
-      {/* Pricing and File link */}
+      {/* Payment Status & File link */}
       <div className="flex items-center justify-between pt-1 border-t border-slate-100 text-xs">
-        <span className="font-extrabold text-slate-900">
-          ₹{(job.total_amount_inr || job.pricing?.total_amount_inr || 0).toFixed(2)}
-        </span>
+        <div className="flex items-center space-x-1.5">
+          <span className="font-extrabold text-slate-900">
+            ₹{(job.total_amount_inr || job.pricing?.total_amount_inr || 0).toFixed(2)}
+          </span>
+          {job.payment_status === "paid" ? (
+            <span className="text-[9px] font-bold bg-emerald-100 text-emerald-800 px-1.5 py-0.5 rounded flex items-center space-x-0.5">
+              <CreditCard className="w-2.5 h-2.5 text-emerald-600" />
+              <span>PAID</span>
+            </span>
+          ) : (
+            <span className="text-[9px] font-bold bg-amber-50 text-amber-700 border border-amber-200 px-1.5 py-0.5 rounded">
+              UNPAID
+            </span>
+          )}
+        </div>
         {job.file_url && job.file_url !== "[PURGED_FOR_PRIVACY]" ? (
           <a
             href={job.file_url}
@@ -454,8 +598,23 @@ function JobCard({ job, actionButton }) {
         )}
       </div>
 
-      {/* Optional action button */}
+      {job.status === "rejected" && (
+        <div className="p-2 bg-rose-50 border border-rose-200 rounded-lg text-[10px] text-rose-700 font-medium">
+          <strong>Rejected:</strong> {job.rejection_reason || "Unsuitable order"}
+        </div>
+      )}
+
+      {/* Optional action button & Reject option */}
       {actionButton}
+
+      {job.status !== "ready" && job.status !== "completed" && job.status !== "rejected" && onReject && (
+        <button
+          onClick={() => onReject(job.job_id)}
+          className="w-full text-center text-[10px] font-bold text-slate-400 hover:text-rose-600 pt-1 transition-colors"
+        >
+          Reject Order
+        </button>
+      )}
     </div>
   );
 }
@@ -560,7 +719,18 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
             }`}
           >
             <Tag className="w-3.5 h-3.5" />
-            <span>Pricing Matrix & Rules</span>
+            <span>Pricing Matrix</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("persona")}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center space-x-2 ${
+              activeTab === "persona"
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>AI Persona & Tone</span>
           </button>
           <button
             onClick={() => setActiveTab("context")}
@@ -571,7 +741,7 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
             }`}
           >
             <BookOpen className="w-3.5 h-3.5" />
-            <span>Business Context & RAG Docs</span>
+            <span>Business Context & RAG</span>
           </button>
         </div>
 
@@ -707,6 +877,129 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
                   placeholder="e.g. Free soft binding for orders over ₹200. Express prints available."
                   className="w-full p-3 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 leading-relaxed"
                 />
+              </div>
+            </div>
+          ) : activeTab === "persona" ? (
+            <div className="space-y-5">
+              <div className="bg-indigo-50/70 border border-indigo-100 p-4 rounded-2xl">
+                <div className="flex items-center space-x-2 text-indigo-900 font-bold text-xs mb-1">
+                  <Sparkles className="w-4 h-4 text-indigo-600" />
+                  <span>Configurable Agent Persona & Voice</span>
+                </div>
+                <p className="text-[11px] text-indigo-700 leading-relaxed">
+                  Choose a preset or type a customized persona. The intake AI agent adopts this personality when interacting with students on Telegram and Web, while always quoting the exact live rates from your <strong>Pricing Matrix</strong>.
+                </p>
+              </div>
+
+              {/* Persona Presets */}
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-slate-700">Quick Persona Presets</label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        persona:
+                          "Friendly, efficient, and student-focused campus Xerox assistant with local Hyderabad warmth. Explains print options clearly, concisely, and patiently.",
+                      }))
+                    }
+                    className="p-3 text-left border border-slate-200 hover:border-indigo-500 rounded-xl bg-slate-50/50 hover:bg-indigo-50/40 transition-all"
+                  >
+                    <div className="font-bold text-xs text-slate-900 flex items-center space-x-1.5">
+                      <span>🎓 Friendly Student Peer</span>
+                      <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-full font-bold">Default</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">
+                      Warm, supportive campus tone. Patiently explains double-sided savings and binding perks.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        persona:
+                          "High-speed, laser-focused academic print intake agent. Answers in rapid bullet points, prioritizes fast fulfillment, and queues jobs in under 10 seconds.",
+                      }))
+                    }
+                    className="p-3 text-left border border-slate-200 hover:border-indigo-500 rounded-xl bg-slate-50/50 hover:bg-indigo-50/40 transition-all"
+                  >
+                    <div className="font-bold text-xs text-slate-900">⚡ Express / Urgent Sprint</div>
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">
+                      Minimal text, ultra-fast turnarounds, instant calculation, and prompt queueing.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        persona:
+                          "Polite, formal, and professional print shop consultant. Provides structured itemized summaries, advises on paper weights, and delivers executive-grade service.",
+                      }))
+                    }
+                    className="p-3 text-left border border-slate-200 hover:border-indigo-500 rounded-xl bg-slate-50/50 hover:bg-indigo-50/40 transition-all"
+                  >
+                    <div className="font-bold text-xs text-slate-900">💼 Formal Print Specialist</div>
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">
+                      Crisp, polite corporate etiquette with clear itemized price breakdowns.
+                    </p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        persona:
+                          "Colloquial Hyderabad campus Xerox Bhayya. Speaks with local warmth and colloquial phrases ('Namaskaram! Haan bhai, what do you need to print today?'). Always makes sure students get the best price.",
+                      }))
+                    }
+                    className="p-3 text-left border border-slate-200 hover:border-indigo-500 rounded-xl bg-slate-50/50 hover:bg-indigo-50/40 transition-all"
+                  >
+                    <div className="font-bold text-xs text-slate-900">🇮🇳 Campus Xerox Bhayya</div>
+                    <p className="text-[10px] text-slate-500 mt-1 line-clamp-2">
+                      Authentic local student hub flavor with genuine hospitality and care.
+                    </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Active Persona Custom Prompt */}
+              <div className="space-y-1.5 pt-2 border-t border-slate-100">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-700">Active Agent Persona Prompt</label>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        persona:
+                          "Friendly, efficient, and student-focused campus Xerox assistant with local Hyderabad warmth. Explains print options clearly, concisely, and patiently.",
+                      }))
+                    }
+                    className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800"
+                  >
+                    Reset to Base Default
+                  </button>
+                </div>
+                <textarea
+                  rows="4"
+                  value={config?.persona || ""}
+                  onChange={(e) => setConfig((prev) => ({ ...prev, persona: e.target.value }))}
+                  placeholder="Define custom persona, attitude, greeting style, or communication rules..."
+                  className="w-full p-3 border border-slate-300 rounded-xl text-xs focus:ring-2 focus:ring-indigo-500 leading-relaxed font-mono text-slate-800"
+                />
+              </div>
+
+              <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl text-[11px] text-amber-800 flex items-start space-x-2">
+                <Tag className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <span>
+                  <strong>Price Reference Guarantee:</strong> Regardless of which persona you choose, the agent strictly uses your configured rate card (e.g. ₹{config?.pricing?.bw_duplex ? config.pricing.bw_duplex / 2 : 1.5}/side double-sided, ₹{config?.pricing?.color_standard ?? 10}/page color, ₹{config?.pricing?.spiral_binding ?? 30} spiral).
+                </span>
               </div>
             </div>
           ) : (

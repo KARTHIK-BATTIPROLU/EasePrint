@@ -99,3 +99,33 @@ export async function uploadKnowledgeFile(file) {
   if (!res.ok) throw new Error("Failed to upload knowledge document");
   return res.json();
 }
+
+export async function createPaymentOrder(amountInr, jobId) {
+  const res = await fetch(`${BASE_URL}/payments/create-order`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ amount_inr: amountInr, job_id: jobId }),
+  });
+  if (!res.ok) throw new Error("Failed to create Razorpay order");
+  return res.json();
+}
+
+export async function verifyPayment(paymentData) {
+  const res = await fetch(`${BASE_URL}/payments/verify`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(paymentData),
+  });
+  if (!res.ok) throw new Error("Failed to verify payment");
+  return res.json();
+}
+
+export async function rejectJob(jobId, reason, staffNotes = "") {
+  const res = await fetch(`${BASE_URL}/jobs/${jobId}/reject`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ reason, staff_notes: staffNotes }),
+  });
+  if (!res.ok) throw new Error("Failed to reject job");
+  return res.json();
+}

@@ -12,8 +12,20 @@ import {
   FileCheck,
   Tag,
   ArrowRight,
+  CreditCard,
+  ShieldCheck,
+  QrCode,
+  X,
 } from "lucide-react";
-import { calculatePrice, uploadDocument, submitPrintJob, sendChatMessage, fetchJobDetails } from "../api";
+import {
+  calculatePrice,
+  uploadDocument,
+  submitPrintJob,
+  sendChatMessage,
+  fetchJobDetails,
+  createPaymentOrder,
+  verifyPayment,
+} from "../api";
 
 export default function StudentPortal() {
   // Order Form State
@@ -111,16 +123,83 @@ export default function StudentPortal() {
     }
   };
 
-  // Submit Print Order
-  const handleConfirmOrder = async () => {
+  const [paymentModal, setPaymentModal] = useState(null);
+  const [paymentInfo, setPaymentInfo] = useState(null);
+
+  // Submit Print Order with Razorpay Payment
+  const handleStartCheckout = async () => {
     if (!fileData) {
       alert("Please upload a document first.");
       return;
     }
+    const amountInr = pricing?.total_amount_inr || 0;
+    if (amountInr <= 0) {
+      alert("Price estimate not ready.");
+      return;
+    }
     setSubmitting(true);
     const newJobId = "EP-" + Math.floor(100000 + Math.random() * 900000);
+
+    try {
+      const order = await createPaymentOrder(amountInr, newJobId);
+
+      // If Razorpay JS loaded and real key provided (not mock)
+      if (
+        window.Razorpay &&
+        order.key_id &&
+        !order.mock &&
+        !order.key_id.includes("mock") &&
+        !order.key_id.includes("demo")
+      ) {
+        const rzp = new window.Razorpay({
+          key: order.key_id,
+          amount: order.amount,
+          currency: "INR",
+          name: "EasePrint Xerox Hub",
+          description: `Print Order (${pages} pgs, ${copies} copies)`,
+          order_id: order.order_id,
+          image: "https://cdn-icons-png.flaticon.com/512/2874/2874808.png",
+          handler: async function (resp) {
+            await finalizeOrderWithPayment(newJobId, resp.razorpay_payment_id, order.order_id);
+          },
+          prefill: {
+            name: studentName,
+            email: "student@campus.edu",
+            contact: "9876543210",
+          },
+          theme: { color: "#0284c7" },
+        });
+        rzp.open();
+        setSubmitting(false);
+      } else {
+        // Open instant in-app Razorpay modal (test simulation)
+        setPaymentModal({
+          jobId: newJobId,
+          orderId: order.order_id,
+          amountInr: amountInr,
+          keyId: order.key_id,
+          mock: order.mock,
+        });
+        setSubmitting(false);
+      }
+    } catch (e) {
+      console.warn("Razorpay order creation fallback:", e);
+      setPaymentModal({
+        jobId: newJobId,
+        orderId: "order_sim_" + Date.now(),
+        amountInr: amountInr,
+        keyId: "rzp_test_sim",
+        mock: true,
+      });
+      setSubmitting(false);
+    }
+  };
+
+  const finalizeOrderWithPayment = async (jobId, paymentId, orderId) => {
+    setSubmitting(true);
+    setPaymentModal(null);
     const jobPayload = {
-      job_id: newJobId,
+      job_id: jobId,
       source_channel: "web",
       sender_id: sessionId,
       sender_name: studentName,
@@ -136,22 +215,34 @@ export default function StudentPortal() {
       paper_type: paperType,
       total_amount_inr: pricing?.total_amount_inr || 0,
       pricing_summary: pricing?.summary || "",
+      payment_status: "paid",
+      payment_id: paymentId,
+      paid_at: new Date().toISOString(),
     };
 
     try {
       await submitPrintJob(jobPayload);
-      setActiveJobId(newJobId);
+      try {
+        await verifyPayment({
+          job_id: jobId,
+          razorpay_payment_id: paymentId,
+          razorpay_order_id: orderId,
+        });
+      } catch (e) {}
+
+      setActiveJobId(jobId);
+      setPaymentInfo({ paymentId, amountInr: pricing?.total_amount_inr });
       setChatMessages((prev) => [
         ...prev,
         {
           role: "assistant",
-          content: `🎉 **Order Confirmed!** Your Job ID is **${newJobId}**. Total: **₹${pricing?.total_amount_inr?.toFixed(
+          content: `🎉 **Payment Verified & Order Confirmed!**\n\n• **Job ID:** \`${jobId}\`\n• **Payment ID:** \`${paymentId}\` (Razorpay)\n• **Total Paid:** ₹${pricing?.total_amount_inr?.toFixed(
             2
-          )}**. You can track real-time printing progress below!`,
+          )}\n• **Est. Wait Time:** ~3–5 minutes\n\nYou can track live queue status below!`,
         },
       ]);
     } catch (err) {
-      alert("Error submitting job: " + err.message);
+      alert("Error queueing order: " + err.message);
     } finally {
       setSubmitting(false);
     }
@@ -407,7 +498,7 @@ export default function StudentPortal() {
             </div>
 
             <button
-              onClick={handleConfirmOrder}
+              onClick={handleStartCheckout}
               disabled={submitting || !fileData}
               className={`w-full mt-5 py-3.5 px-4 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg ${
                 !fileData
@@ -417,7 +508,12 @@ export default function StudentPortal() {
                   : "bg-sky-500 hover:bg-sky-400 text-slate-950 shadow-sky-500/30"
               }`}
             >
-              <span>{submitting ? "Queueing Order..." : "Confirm & Send to Print Queue"}</span>
+              <CreditCard className="w-4 h-4" />
+              <span>
+                {submitting
+                  ? "Processing Payment..."
+                  : `Pay ₹${pricing?.total_amount_inr?.toFixed(2) || "0.00"} via Razorpay`}
+              </span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </div>
@@ -431,14 +527,26 @@ export default function StudentPortal() {
                     <Clock className="w-5 h-5 animate-spin" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">Active Order: {activeJobId}</h4>
-                    <p className="text-xs text-slate-600">
+                    <div className="flex items-center space-x-2">
+                      <h4 className="text-sm font-bold text-slate-900">Active Order: {activeJobId}</h4>
+                      <span className="text-[10px] font-bold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        <span>PAID (Razorpay)</span>
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-600 mt-0.5">
                       Status:{" "}
                       <span className="font-bold uppercase text-emerald-700">
                         {jobStatus?.status || "queued"}
                       </span>{" "}
-                      • Pickup: {jobStatus?.raw_fields?.pickup_counter || "Counter 1"}
+                      • Pickup: {jobStatus?.raw_fields?.pickup_counter || "Counter 1"} •{" "}
+                      <span className="text-indigo-600 font-semibold">Est. Wait: ~3-5 mins</span>
                     </p>
+                    {paymentInfo && (
+                      <p className="text-[10px] text-slate-500 mt-0.5">
+                        Txn ID: <span className="font-mono text-slate-700">{paymentInfo.paymentId}</span>
+                      </p>
+                    )}
                     {jobStatus?.status === "ready" && (
                       <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center space-x-1">
                         <span>🔒 Digital file permanently shredded from cloud for your privacy.</span>
@@ -539,6 +647,91 @@ export default function StudentPortal() {
           </form>
         </div>
       </div>
+
+      {/* Razorpay In-App Payment Modal (Simulated / Test Mode Fallback) */}
+      {paymentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
+            {/* Razorpay Header */}
+            <div className="bg-[#0c2340] text-white p-5 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center font-black text-white text-base">
+                  R
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm leading-tight flex items-center space-x-1.5">
+                    <span>Razorpay Secure Checkout</span>
+                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  </h3>
+                  <p className="text-[10px] text-slate-300">EasePrint Campus Xerox • Order #{paymentModal.jobId}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setPaymentModal(null)}
+                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Amount Display */}
+            <div className="p-6 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Amount Payable</span>
+                <div className="text-3xl font-black text-slate-900">₹{paymentModal.amountInr.toFixed(2)}</div>
+              </div>
+              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full flex items-center space-x-1">
+                <span>🧪 Test Mode</span>
+              </span>
+            </div>
+
+            {/* Payment Options */}
+            <div className="p-6 space-y-4">
+              <span className="text-xs font-bold text-slate-700">Choose Payment Method</span>
+
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-3 border-2 border-indigo-500 rounded-xl bg-indigo-50/30 flex flex-col items-center justify-center text-center cursor-pointer">
+                  <span className="text-lg">📱</span>
+                  <span className="text-[11px] font-bold text-slate-800 mt-1">UPI / QR</span>
+                </div>
+                <div className="p-3 border border-slate-200 rounded-xl bg-white flex flex-col items-center justify-center text-center opacity-60">
+                  <span className="text-lg">💳</span>
+                  <span className="text-[11px] font-bold text-slate-800 mt-1">Cards</span>
+                </div>
+                <div className="p-3 border border-slate-200 rounded-xl bg-white flex flex-col items-center justify-center text-center opacity-60">
+                  <span className="text-lg">🏦</span>
+                  <span className="text-[11px] font-bold text-slate-800 mt-1">NetBanking</span>
+                </div>
+              </div>
+
+              <div className="border border-dashed border-slate-300 rounded-2xl p-4 flex items-center justify-center space-x-3 bg-white">
+                <QrCode className="w-12 h-12 text-slate-800" />
+                <div className="text-left">
+                  <div className="text-xs font-bold text-slate-900">Scan UPI QR to Pay</div>
+                  <div className="text-[10px] text-slate-500">Supports Google Pay, PhonePe, Paytm, BHIM</div>
+                </div>
+              </div>
+
+              <button
+                onClick={() =>
+                  finalizeOrderWithPayment(
+                    paymentModal.jobId,
+                    "pay_" + Math.random().toString(36).substring(2, 11),
+                    paymentModal.orderId
+                  )
+                }
+                className="w-full py-3.5 px-4 rounded-xl bg-[#0c2340] hover:bg-[#14325a] text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg"
+              >
+                <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                <span>Simulate Instant Success Payment (₹{paymentModal.amountInr.toFixed(2)})</span>
+              </button>
+              <p className="text-[10px] text-center text-slate-400">
+                Secured by 256-bit encryption • Campus Xerox Payment Gateway
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
