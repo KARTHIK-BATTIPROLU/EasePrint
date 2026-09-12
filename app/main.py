@@ -333,8 +333,8 @@ async def enqueue_job(job: JobIn):
             logger.info(f"Enqueued job {job.job_id} into ARQ task queue.")
         except Exception as exc:
             logger.warning(f"Failed to enqueue job to ARQ: {exc}")
-    else:
-        logger.info(f"ARQ pool not connected. Running asynchronous agent task for job {job.job_id}.")
+    elif job.source_channel not in ("web", "app") and not job.total_amount_inr:
+        logger.info(f"Running agent for unstructured inquiry {job.job_id}.")
         agent = get_bedrock_agent()
         asyncio.create_task(agent.process_job(job_dict))
 
@@ -874,7 +874,7 @@ async def reject_job(job_id: str, req: RejectJobRequest):
 # AUTONOMOUS QUEUE ALGORITHM EXECUTION ENGINE (AUTO-PILOT)
 # =========================================================================
 
-async def process_autonomous_queue_pipeline(config: StoreCustomizations) -> Dict[str, Any]:
+async def process_autonomous_queue_pipeline(config: StoreCustomizations, force: bool = False) -> Dict[str, Any]:
     """
     Autonomous Queue Algorithm Execution Engine.
     Executes the next necessary state transition in the print lifecycle:
@@ -884,8 +884,8 @@ async def process_autonomous_queue_pipeline(config: StoreCustomizations) -> Dict
     Stage 4: Completion (ready -> completed if auto_complete enabled)
     """
     algo = getattr(config, "algorithm", None)
-    if not algo or not algo.enabled:
-        return {"action": "disabled", "message": "Autonomous Algorithm is disabled."}
+    if not force and (not algo or not algo.enabled):
+        return {"action": "disabled", "message": "Autonomous Algorithm is paused (Manual Mode)."}
 
     dynamo = DynamoDBClient()
     items = await dynamo.list_all_jobs(limit=100)
@@ -1039,7 +1039,7 @@ async def get_algorithm_status():
 async def trigger_algorithm_next():
     """Triggers the next automated step of the queue execution pipeline on-demand."""
     config = await customizations_manager.get_customizations()
-    return await process_autonomous_queue_pipeline(config)
+    return await process_autonomous_queue_pipeline(config, force=True)
 
 
 @app.get("/analytics/earnings", tags=["Analytics"])

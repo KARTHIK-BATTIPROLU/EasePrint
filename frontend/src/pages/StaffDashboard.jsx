@@ -646,15 +646,23 @@ export default function StaffDashboard() {
                 <div className="flex items-center space-x-1.5 bg-white/10 border border-white/20 rounded-xl p-1">
                   <button
                     onClick={async () => {
-                      if (algoStatus?.enabled) return; // already auto
+                      if (algoStatus?.enabled) return;
+                      setAlgoStatus((prev) => prev ? { ...prev, enabled: true } : { enabled: true });
+                      setNotificationLog((prev) => [
+                        { id: Date.now(), text: "⚡ Auto-Pilot Activated: Autonomous queue loop processing orders every 3s" },
+                        ...prev,
+                      ]);
                       try {
-                        const current = await fetch("/customizations").then(r => r.json());
+                        const current = await fetchCustomizations();
                         current.algorithm = { ...current.algorithm, enabled: true };
                         current.last_updated = new Date().toISOString();
-                        await fetch("/customizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(current) });
+                        await saveCustomizations(current);
                         await loadAlgoStatus();
                         await loadJobs();
-                      } catch (e) { alert("Toggle error: " + e.message); }
+                      } catch (e) {
+                        alert("Toggle error: " + e.message);
+                        loadAlgoStatus();
+                      }
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center space-x-1.5 ${
                       algoStatus?.enabled
@@ -668,14 +676,22 @@ export default function StaffDashboard() {
                   </button>
                   <button
                     onClick={async () => {
-                      if (!algoStatus?.enabled) return; // already manual
+                      if (!algoStatus?.enabled) return;
+                      setAlgoStatus((prev) => prev ? { ...prev, enabled: false } : { enabled: false });
+                      setNotificationLog((prev) => [
+                        { id: Date.now(), text: "🎛️ Manual Dispatch Mode: Auto-Pilot paused. Click 'Execute Next Step' or manage cards manually." },
+                        ...prev,
+                      ]);
                       try {
-                        const current = await fetch("/customizations").then(r => r.json());
+                        const current = await fetchCustomizations();
                         current.algorithm = { ...current.algorithm, enabled: false };
                         current.last_updated = new Date().toISOString();
-                        await fetch("/customizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(current) });
+                        await saveCustomizations(current);
                         await loadAlgoStatus();
-                      } catch (e) { alert("Toggle error: " + e.message); }
+                      } catch (e) {
+                        alert("Toggle error: " + e.message);
+                        loadAlgoStatus();
+                      }
                     }}
                     className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center space-x-1.5 ${
                       !algoStatus?.enabled
