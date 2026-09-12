@@ -159,8 +159,27 @@ export default function LandingPage({ onSelectPortal }) {
               </div>
             </div>
 
-            {/* Right Column: Clean, spacious area dedicated to the 3D Printer Animation */}
-            <div className="lg:col-span-5 hidden lg:block pointer-events-none select-none min-h-[360px]" />
+            {/* Right Column: 3 Quotes on Right & Dedicated 3D Model Area */}
+            <div className="lg:col-span-5 hidden lg:flex flex-col items-end justify-center space-y-4 py-8 pointer-events-none select-none">
+              <div className="flex items-center space-x-2.5 px-4 py-2.5 rounded-2xl bg-white/75 backdrop-blur-md border border-white/90 shadow-md shadow-slate-200/40 text-xs sm:text-sm font-semibold text-slate-700">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
+                </span>
+                <Printer className="w-4 h-4 text-sky-600" />
+                <span>Dual High-Speed Xerox Engine</span>
+              </div>
+
+              <div className="flex items-center space-x-2.5 px-4 py-2.5 rounded-2xl bg-white/75 backdrop-blur-md border border-white/90 shadow-md shadow-slate-200/40 text-xs sm:text-sm font-semibold text-slate-700">
+                <Zap className="w-4 h-4 text-amber-500" />
+                <span>Sub-second Bedrock AI Quoting</span>
+              </div>
+
+              <div className="flex items-center space-x-2.5 px-4 py-2.5 rounded-2xl bg-white/75 backdrop-blur-md border border-white/90 shadow-md shadow-slate-200/40 text-xs sm:text-sm font-semibold text-slate-700">
+                <Shield className="w-4 h-4 text-emerald-600" />
+                <span>100% Zero-Retention Auto-Shred</span>
+              </div>
+            </div>
           </div>
         </div>
       </section>

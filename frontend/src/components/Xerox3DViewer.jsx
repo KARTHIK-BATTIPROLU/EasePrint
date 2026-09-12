@@ -41,9 +41,9 @@ export default function Xerox3DViewer() {
 
     // --- Responsive Placement: Small & moving on the right at top of page, grows as user scrolls ---
     const isMobile = width < 1024;
-    const machinePosX = isMobile ? 0 : 2.6;
+    const machinePosX = isMobile ? 0 : 2.5;
     const targetLookX = isMobile ? 0 : 0.6;
-    const initialBaseScale = isMobile ? 0.52 : 0.52;
+    const initialBaseScale = isMobile ? 0.38 : 0.36;
 
     // --- Camera Setup with Wide Framing & Offset Target ---
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
@@ -80,9 +80,9 @@ export default function Xerox3DViewer() {
     });
 
     const slateTrimMat = new THREE.MeshStandardMaterial({
-      color: 0x334155,
+      color: 0x475569,
       roughness: 0.35,
-      metalness: 0.5,
+      metalness: 0.35,
     });
 
     const cobaltAccentMat = new THREE.MeshStandardMaterial({
@@ -130,7 +130,7 @@ export default function Xerox3DViewer() {
     const machineGroup = new THREE.Group();
     // Elevated in Hero right column at scroll 0, smoothly glides into middle and descends on scroll
     machineGroup.scale.set(initialBaseScale, initialBaseScale, initialBaseScale);
-    machineGroup.position.set(machinePosX, isMobile ? 0.0 : 0.15, 0);
+    machineGroup.position.set(machinePosX, isMobile ? 0.0 : 0.20, 0);
     scene.add(machineGroup);
 
     // 1. Base Pedestal
@@ -294,7 +294,7 @@ export default function Xerox3DViewer() {
     });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
-    groundMesh.position.set(machinePosX, isMobile ? 0.0 : 0.15, 0);
+    groundMesh.position.set(machinePosX, isMobile ? 0.0 : 0.20, 0);
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
@@ -307,7 +307,7 @@ export default function Xerox3DViewer() {
     });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
     ringMesh.rotation.x = -Math.PI / 2;
-    ringMesh.position.set(machinePosX, isMobile ? 0.01 : 0.16, 0);
+    ringMesh.position.set(machinePosX, isMobile ? 0.01 : 0.21, 0);
     scene.add(ringMesh);
 
     // --- Studio Lighting ---
@@ -361,29 +361,29 @@ export default function Xerox3DViewer() {
       let targetX, targetScale, targetY;
       if (isMobile) {
         targetX = 0;
-        targetScale = 0.52;
-        targetY = 0.0 - Math.min(1, smoothScrollY / 2000) * 0.45;
+        targetScale = 0.40;
+        targetY = 0.0 - Math.min(1, smoothScrollY / 2000) * 0.40;
       } else {
         if (smoothScrollY <= 850) {
           const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 850);
-          targetX = THREE.MathUtils.lerp(2.5, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.52, 0.70, t);
-          targetY = THREE.MathUtils.lerp(0.15, -0.32, t);
+          targetX = THREE.MathUtils.lerp(2.4, 0.0, t);
+          targetScale = THREE.MathUtils.lerp(0.36, 0.50, t);
+          targetY = THREE.MathUtils.lerp(0.20, -0.20, t);
         } else if (smoothScrollY <= 1700) {
           const t = THREE.MathUtils.smoothstep(smoothScrollY, 850, 1700);
-          targetX = THREE.MathUtils.lerp(0.0, 2.3, t);
-          targetScale = THREE.MathUtils.lerp(0.70, 0.64, t);
-          targetY = THREE.MathUtils.lerp(-0.32, -0.50, t);
+          targetX = THREE.MathUtils.lerp(0.0, 2.2, t);
+          targetScale = THREE.MathUtils.lerp(0.50, 0.44, t);
+          targetY = THREE.MathUtils.lerp(-0.20, -0.38, t);
         } else if (smoothScrollY <= 2600) {
           const t = THREE.MathUtils.smoothstep(smoothScrollY, 1700, 2600);
-          targetX = THREE.MathUtils.lerp(2.3, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.64, 0.70, t);
-          targetY = THREE.MathUtils.lerp(-0.50, -0.65, t);
+          targetX = THREE.MathUtils.lerp(2.2, 0.0, t);
+          targetScale = THREE.MathUtils.lerp(0.44, 0.50, t);
+          targetY = THREE.MathUtils.lerp(-0.38, -0.52, t);
         } else {
           const t = THREE.MathUtils.smoothstep(smoothScrollY, 2600, 3500);
-          targetX = THREE.MathUtils.lerp(0.0, 2.3, t);
-          targetScale = THREE.MathUtils.lerp(0.70, 0.64, t);
-          targetY = THREE.MathUtils.lerp(-0.65, -0.78, t);
+          targetX = THREE.MathUtils.lerp(0.0, 2.2, t);
+          targetScale = THREE.MathUtils.lerp(0.50, 0.44, t);
+          targetY = THREE.MathUtils.lerp(-0.52, -0.65, t);
         }
       }
 
@@ -403,7 +403,7 @@ export default function Xerox3DViewer() {
       ringMesh.position.y = currentY + 0.01;
 
       // Scale ground shadow and ring with the machine
-      const scaleFactor = currentScale / 0.7;
+      const scaleFactor = currentScale / 0.48;
       ringMesh.scale.setScalar(scaleFactor * (1.0 + Math.sin(elapsedTime * 2.0) * 0.04));
       groundMesh.scale.setScalar(scaleFactor);
 
@@ -421,7 +421,7 @@ export default function Xerox3DViewer() {
       // Camera adapts dynamically to machine movement
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
       const offsetX = currentX - machinePosX;
-      const offsetY = currentY - 0.15;
+      const offsetY = currentY - 0.20;
 
       const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.55, offsetY * 0.35, 0));
       const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.75, offsetY * 0.45, 0));
