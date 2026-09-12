@@ -81,64 +81,64 @@ export default function LandingPage({ onSelectPortal }) {
   ];
 
   return (
-    <div className="bg-slate-900 text-slate-100 min-h-screen selection:bg-cyan-500 selection:text-white">
+    <div className="bg-white text-slate-800 min-h-screen selection:bg-sky-500 selection:text-white">
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION & 3D XEROX MACHINE                                        */}
+      {/* 1. HERO SECTION & SEAMLESS 3D XEROX MACHINE                                */}
       {/* ========================================================================= */}
-      <section className="relative pt-8 pb-20 lg:pt-16 lg:pb-32 overflow-hidden border-b border-slate-800">
-        {/* Ambient Glows */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 right-10 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative pt-6 pb-16 lg:pt-14 lg:pb-24 overflow-hidden border-b border-slate-200 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/50">
+        {/* Soft Ambient Radial Light Accents */}
+        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sky-100/60 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-1/3 right-10 w-[450px] h-[450px] bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-            {/* Left: Value Proposition & Hero CTAs */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+            {/* Left Column: Value Proposition, Dual Selector & Quick Estimator (7 cols) */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
               {/* Pill Badge */}
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/80 text-xs font-semibold text-cyan-400 shadow-inner">
-                <Sparkles className="w-3.5 h-3.5 animate-pulse text-cyan-400" />
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-xs font-semibold text-sky-700 shadow-sm">
+                <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
                 <span>Next-Gen Campus Print Ecosystem • AWS Bedrock AI</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] text-white">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] text-slate-900">
                 The Autonomous{" "}
-                <span className="bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 bg-clip-text text-transparent">
+                <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   Campus Print Cloud
                 </span>
               </h1>
 
               {/* Subhead */}
-              <p className="text-lg sm:text-xl text-slate-300 max-w-2xl font-normal leading-relaxed mx-auto lg:mx-0">
+              <p className="text-base sm:text-lg text-slate-600 max-w-2xl font-normal leading-relaxed mx-auto lg:mx-0">
                 Eliminate WhatsApp queue chaos, USB malware risks, and lost files. Order from your hostel bed, let Bedrock
                 AI quote instant ₹ rates, and pick up your{" "}
-                <strong className="text-cyan-400 font-semibold">100% Zero-Retention shredded</strong> prints with zero wait.
+                <strong className="text-sky-700 font-semibold">100% Zero-Retention shredded</strong> prints with zero wait.
               </p>
 
               {/* DUAL PORTAL SWITCHER: THE TWO ENTRANCES */}
-              <div className="pt-4 pb-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 text-center lg:text-left">
+              <div className="pt-2">
+                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center lg:text-left">
                   Choose Your Dashboard to Enter:
                 </p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto lg:mx-0">
                   {/* Card 1: Student Portal */}
                   <button
                     onClick={() => onSelectPortal("student")}
-                    className="group relative text-left p-5 rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-800/50 border border-slate-700 hover:border-cyan-500/80 transition-all duration-300 shadow-lg hover:shadow-cyan-500/20 hover:-translate-y-1"
+                    className="group relative text-left p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-sky-500 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-sky-100 hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-cyan-500/20 text-cyan-400 flex items-center justify-center group-hover:bg-cyan-500 group-hover:text-slate-950 transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
                         <Printer className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-300 border border-cyan-500/20">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
                         Student Access
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-cyan-400 transition-colors flex items-center gap-1">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-sky-600 transition-colors flex items-center gap-1">
                       Student Portal
                       <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
                       Upload PDF, chat with Bedrock AI, get instant ₹ rates, pay via UPI, and track print progress.
                     </p>
                   </button>
@@ -146,54 +146,54 @@ export default function LandingPage({ onSelectPortal }) {
                   {/* Card 2: Staff Command */}
                   <button
                     onClick={() => onSelectPortal("staff")}
-                    className="group relative text-left p-5 rounded-2xl bg-gradient-to-b from-slate-800/90 to-slate-800/50 border border-slate-700 hover:border-indigo-500/80 transition-all duration-300 shadow-lg hover:shadow-indigo-500/20 hover:-translate-y-1"
+                    className="group relative text-left p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-500 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-indigo-100 hover:-translate-y-1"
                   >
                     <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-500/20 text-indigo-400 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors">
+                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
                         <Shield className="w-5 h-5" />
                       </div>
-                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
                         Staff & Operator
                       </span>
                     </div>
-                    <h3 className="text-lg font-bold text-white group-hover:text-indigo-400 transition-colors flex items-center gap-1">
+                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
                       Staff Command
                       <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
                     </h3>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">
+                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
                       Live Kanban print queue, auto-counter routing, custom pricing matrix, and 1-click cloud shredder.
                     </p>
                   </button>
                 </div>
               </div>
 
-              {/* Quick Instant Price Calculator */}
-              <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xl max-w-xl mx-auto lg:mx-0">
+              {/* Quick Instant Price Calculator Card */}
+              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-md shadow-slate-200/50 max-w-xl mx-auto lg:mx-0">
                 <div className="flex items-center justify-between mb-2.5">
-                  <div className="flex items-center space-x-2 text-xs font-bold text-cyan-400 uppercase tracking-wide">
-                    <Sparkles className="w-3.5 h-3.5 animate-pulse" />
-                    <span>Instant Rate Calculator</span>
+                  <div className="flex items-center space-x-2 text-xs font-bold text-sky-700 uppercase tracking-wide">
+                    <Sparkles className="w-3.5 h-3.5 text-sky-600" />
+                    <span>Instant Campus Rate Calculator</span>
                   </div>
-                  <span className="text-[10px] bg-slate-900/90 border border-slate-700/70 px-2 py-0.5 rounded-full text-cyan-300 font-mono">
+                  <span className="text-[10px] bg-slate-100 border border-slate-200 px-2 py-0.5 rounded-full text-slate-600 font-mono">
                     Hyderabad Campus Rates
                   </span>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 text-xs">
                   {/* Pages */}
-                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
-                    <span className="text-[10px] text-slate-400 block mb-1">Pages</span>
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                    <span className="text-[10px] text-slate-500 block mb-1">Pages</span>
                     <div className="flex items-center justify-between">
                       <button
                         onClick={() => setQuickPages(Math.max(1, quickPages - 5))}
-                        className="w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-bold"
+                        className="w-5 h-5 flex items-center justify-center bg-white border border-slate-200 rounded text-slate-700 font-bold hover:bg-slate-100"
                       >
                         -
                       </button>
-                      <span className="font-bold font-mono text-white text-sm">{quickPages}</span>
+                      <span className="font-bold font-mono text-slate-900 text-sm">{quickPages}</span>
                       <button
                         onClick={() => setQuickPages(quickPages + 5)}
-                        className="w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-bold"
+                        className="w-5 h-5 flex items-center justify-center bg-white border border-slate-200 rounded text-slate-700 font-bold hover:bg-slate-100"
                       >
                         +
                       </button>
@@ -201,14 +201,14 @@ export default function LandingPage({ onSelectPortal }) {
                   </div>
 
                   {/* Mode */}
-                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
-                    <span className="text-[10px] text-slate-400 block mb-1">Mode</span>
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                    <span className="text-[10px] text-slate-500 block mb-1">Mode</span>
                     <button
                       onClick={() => setQuickColor(quickColor === "bw" ? "color" : "bw")}
                       className={`w-full py-0.5 px-1 rounded font-bold text-xs uppercase transition-colors ${
                         quickColor === "color"
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                          : "bg-slate-800 text-slate-200"
+                          ? "bg-amber-100 text-amber-900 border border-amber-300"
+                          : "bg-white border border-slate-200 text-slate-800"
                       }`}
                     >
                       {quickColor === "color" ? "Color (₹10)" : "B&W (₹1.5)"}
@@ -216,19 +216,19 @@ export default function LandingPage({ onSelectPortal }) {
                   </div>
 
                   {/* Sides */}
-                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
-                    <span className="text-[10px] text-slate-400 block mb-1">Sides</span>
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                    <span className="text-[10px] text-slate-500 block mb-1">Sides</span>
                     <button
                       onClick={() => setQuickSides(quickSides === "single" ? "double" : "single")}
-                      className="w-full py-0.5 px-1 rounded font-bold text-xs bg-slate-800 text-slate-200 capitalize transition-colors"
+                      className="w-full py-0.5 px-1 rounded font-bold text-xs bg-white border border-slate-200 text-slate-800 capitalize transition-colors"
                     >
                       {quickSides}
                     </button>
                   </div>
 
                   {/* Binding */}
-                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
-                    <span className="text-[10px] text-slate-400 block mb-1">Binding</span>
+                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                    <span className="text-[10px] text-slate-500 block mb-1">Binding</span>
                     <button
                       onClick={() =>
                         setQuickBinding(
@@ -239,7 +239,7 @@ export default function LandingPage({ onSelectPortal }) {
                             : "none"
                         )
                       }
-                      className="w-full py-0.5 px-1 rounded font-bold text-xs bg-slate-800 text-slate-200 capitalize truncate transition-colors"
+                      className="w-full py-0.5 px-1 rounded font-bold text-xs bg-white border border-slate-200 text-slate-800 capitalize truncate transition-colors"
                     >
                       {quickBinding}
                     </button>
@@ -247,14 +247,14 @@ export default function LandingPage({ onSelectPortal }) {
                 </div>
 
                 {/* Calculation Output & Direct Portal Launch */}
-                <div className="flex items-center justify-between pt-2 border-t border-slate-700/70">
+                <div className="flex items-center justify-between pt-2 border-t border-slate-200">
                   <div>
-                    <span className="text-[10px] text-slate-400 block leading-tight">Total Estimate:</span>
-                    <span className="text-xl font-black text-cyan-400 font-mono">₹{calcPrice.toFixed(2)}</span>
+                    <span className="text-[10px] text-slate-500 block leading-tight">Total Estimate:</span>
+                    <span className="text-xl font-black text-sky-700 font-mono">₹{calcPrice.toFixed(2)}</span>
                   </div>
                   <button
                     onClick={() => onSelectPortal("student")}
-                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 transition-all hover:scale-105"
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-md shadow-sky-600/20 transition-all hover:scale-105"
                   >
                     <span>Print in Student Portal</span>
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -263,56 +263,54 @@ export default function LandingPage({ onSelectPortal }) {
               </div>
 
               {/* Trust Indicators */}
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-6 text-xs text-slate-400">
+              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-6 text-xs text-slate-500">
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Zero USB Pen-Drive Virus
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Instant File Shredder (S3 Purge)
                 </span>
                 <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
                   Verified UPI & Razorpay
                 </span>
               </div>
             </div>
 
-            {/* Right: Interactive 3D Xerox Machine */}
-            <div className="lg:col-span-5 relative">
-              <div className="relative rounded-3xl bg-gradient-to-b from-slate-800/40 via-slate-900/60 to-slate-950 border border-slate-700/60 p-2 shadow-2xl backdrop-blur-xl">
-                <Xerox3DViewer />
-              </div>
+            {/* Right Column: Seamless 3D Xerox Machine (Borderless & Floating) */}
+            <div className="lg:col-span-5 relative flex items-center justify-center">
+              <Xerox3DViewer />
             </div>
           </div>
         </div>
       </section>
 
       {/* ========================================================================= */}
-      {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS                                  */}
+      {/* 2. LIVE CAMPUS PULSE & QUANTIFIED METRICS (LIGHT THEME)                   */}
       {/* ========================================================================= */}
-      <section className="py-12 bg-slate-950 border-b border-slate-800">
+      <section className="py-10 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
-              <div className="text-3xl sm:text-4xl font-black text-cyan-400 font-mono">&lt; 10s</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Order Submission Time</div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+              <div className="text-3xl sm:text-4xl font-black text-sky-700 font-mono">&lt; 10s</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Order Submission Time</div>
               <p className="text-[11px] text-slate-500 mt-1">From upload to queue confirmation</p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
-              <div className="text-3xl sm:text-4xl font-black text-emerald-400 font-mono">100%</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Zero-Retention Privacy</div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+              <div className="text-3xl sm:text-4xl font-black text-emerald-600 font-mono">100%</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Zero-Retention Privacy</div>
               <p className="text-[11px] text-slate-500 mt-1">S3 & local files shredded on handover</p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
-              <div className="text-3xl sm:text-4xl font-black text-amber-400 font-mono">₹0</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Hidden Overcharges</div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+              <div className="text-3xl sm:text-4xl font-black text-amber-600 font-mono">₹0</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Hidden Overcharges</div>
               <p className="text-[11px] text-slate-500 mt-1">Exact Hyderabad student rates upfront</p>
             </div>
-            <div className="p-4 rounded-2xl bg-slate-900/50 border border-slate-800">
-              <div className="text-3xl sm:text-4xl font-black text-indigo-400 font-mono">3 Channels</div>
-              <div className="text-xs font-semibold text-slate-400 uppercase tracking-wider mt-1">Unified Ingestion</div>
+            <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200/80 shadow-sm">
+              <div className="text-3xl sm:text-4xl font-black text-indigo-700 font-mono">3 Channels</div>
+              <div className="text-xs font-semibold text-slate-700 uppercase tracking-wider mt-1">Unified Ingestion</div>
               <p className="text-[11px] text-slate-500 mt-1">Web, WhatsApp, and Telegram in 1 queue</p>
             </div>
           </div>
@@ -322,16 +320,16 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 3. THE PROBLEM: WHAT ISSUES WE ARE SOLVING                                */}
       {/* ========================================================================= */}
-      <section className="py-20 lg:py-28 bg-slate-900/90 border-b border-slate-800">
+      <section className="py-16 lg:py-24 bg-slate-50/70 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 px-3 py-1 rounded-full border border-rose-500/20">
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-rose-700 bg-rose-50 px-3 py-1 rounded-full border border-rose-200">
               The Reality Today
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Why Campus Print Shops Are Badly Broken
             </h2>
-            <p className="text-slate-400 mt-3 text-base sm:text-lg">
+            <p className="text-slate-600 mt-2 text-base sm:text-lg">
               Every college campus in India suffers from the same outdated, chaotic printout routine. Students lose hours
               every semester to these 5 painful bottlenecks:
             </p>
@@ -339,73 +337,73 @@ export default function LandingPage({ onSelectPortal }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {/* Issue 1 */}
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 hover:border-rose-500/40 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Smartphone className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">1. WhatsApp DM Chaos & Lost Files</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <h3 className="text-lg font-bold text-slate-900 mb-2">1. WhatsApp DM Chaos & Lost Files</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Hundreds of students message a single shop owner's personal WhatsApp. PDFs get lost in endless chats,
                 unnamed files get printed twice or forgotten, and students constantly argue over whose message arrived first.
               </p>
             </div>
 
             {/* Issue 2 */}
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 hover:border-rose-500/40 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <AlertTriangle className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">2. USB Pendrive Malware Nightmares</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <h3 className="text-lg font-bold text-slate-900 mb-2">2. USB Pendrive Malware Nightmares</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Plugging personal student flash drives into shared print shop PCs spreads trojans, ransomware, and shortcut
                 viruses. One trip to the Xerox shop often corrupts a semester’s worth of project code and thesis files.
               </p>
             </div>
 
             {/* Issue 3 */}
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 hover:border-rose-500/40 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <FolderLock className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">3. Zero Privacy & Dangerous Data Leaks</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <h3 className="text-lg font-bold text-slate-900 mb-2">3. Zero Privacy & Dangerous Data Leaks</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Personal Aadhaar cards, hall tickets, medical certificates, and confidential exam papers stay permanently
                 saved in the shop PC’s "Downloads" folder. Anyone standing near the desktop can view and copy private student data.
               </p>
             </div>
 
             {/* Issue 4 */}
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 hover:border-rose-500/40 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <DollarSign className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">4. Opaque Mental Math & Surprise Pricing</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <h3 className="text-lg font-bold text-slate-900 mb-2">4. Opaque Mental Math & Surprise Pricing</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 Busy operators guess prices verbally on the fly. Students are frequently overcharged for duplex vs single-sided,
                 glossy sheets, or spiral binding, leading to disputes and cash change arguments.
               </p>
             </div>
 
             {/* Issue 5 */}
-            <div className="p-6 rounded-2xl bg-slate-800/60 border border-slate-700/70 hover:border-rose-500/40 transition-all group">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+            <div className="p-6 rounded-2xl bg-white border border-slate-200/90 shadow-sm hover:border-rose-300 transition-all group">
+              <div className="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Clock className="w-6 h-6" />
               </div>
-              <h3 className="text-lg font-bold text-white mb-2">5. 40-Minute Crowd Bottlenecks</h3>
-              <p className="text-sm text-slate-300 leading-relaxed">
+              <h3 className="text-lg font-bold text-slate-900 mb-2">5. 40-Minute Crowd Bottlenecks</h3>
+              <p className="text-sm text-slate-600 leading-relaxed">
                 During submission deadlines, 30+ students crowd the counter between lectures, with zero visibility into queue
                 progress. Students waste precious study time standing in line just to ask "is my 4-page printout ready?".
               </p>
             </div>
 
             {/* Summary Card */}
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-cyan-950/40 via-slate-800/80 to-indigo-950/40 border border-cyan-500/30 flex flex-col justify-center text-left">
-              <div className="flex items-center space-x-2 text-cyan-400 font-bold mb-2">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-sky-50 via-white to-indigo-50 border border-sky-200 shadow-sm flex flex-col justify-center text-left">
+              <div className="flex items-center space-x-2 text-sky-700 font-bold mb-2">
                 <Sparkles className="w-5 h-5" />
-                <span>The EasePrint Difference</span>
+                <span>The EasePrint Solution</span>
               </div>
-              <h4 className="text-xl font-bold text-white mb-2">An Autonomous Digital Kiosk</h4>
-              <p className="text-xs text-slate-300 leading-relaxed">
+              <h4 className="text-xl font-bold text-slate-900 mb-2">An Autonomous Digital Kiosk</h4>
+              <p className="text-xs text-slate-600 leading-relaxed">
                 EasePrint completely reimagines campus printing by replacing physical queues with an AI-driven, cloud-native
                 orchestration engine designed for speed, privacy, and operator ease.
               </p>
@@ -417,16 +415,16 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 4. WHAT WE ARE SOLVING PARTICULARLY: THE EASEPRINT ARCHITECTURE           */}
       {/* ========================================================================= */}
-      <section className="py-20 lg:py-28 bg-slate-950 border-b border-slate-800">
+      <section className="py-16 lg:py-24 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-bold uppercase tracking-widest text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
               The Technology
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               What We Are Solving Particularly
             </h2>
-            <p className="text-slate-400 mt-3 text-base sm:text-lg">
+            <p className="text-slate-600 mt-2 text-base sm:text-lg">
               Engineered with AWS cloud infrastructure and Amazon Bedrock generative intelligence to make printing
               effortless, private, and instantaneous.
             </p>
@@ -434,74 +432,74 @@ export default function LandingPage({ onSelectPortal }) {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {/* Pillar 1 */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 hover:border-cyan-500/40 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all flex flex-col justify-between shadow-sm">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
                   <Cpu className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">1. Amazon Bedrock AI Document Specialist</h3>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                <h3 className="text-xl font-bold text-slate-900 mb-3">1. Amazon Bedrock AI Document Specialist</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
                   Our embedded Bedrock agent automatically extracts page counts directly from uploaded PDF bytes, understands
                   conversational specifications ("2 copies double-sided with spiral binding"), and computes exact Hyderabad
                   campus rates in under 1 second with sub-token precision.
                 </p>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono">
-                <span className="text-cyan-400 font-bold">AWS Bedrock:</span> us.amazon.nova-lite-v1:0 (Sub-second Converse API)
+              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+                <span className="text-sky-700 font-bold">AWS Bedrock:</span> us.amazon.nova-lite-v1:0 (Sub-second Converse API)
               </div>
             </div>
 
             {/* Pillar 2 */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 hover:border-emerald-500/40 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-emerald-300 transition-all flex flex-col justify-between shadow-sm">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-6">
                   <Shield className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">2. Military-Grade Zero-Retention Shredder</h3>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                <h3 className="text-xl font-bold text-slate-900 mb-3">2. Military-Grade Zero-Retention Shredder</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
                   Privacy isn't an afterthought; it's hardcoded. The instant the staff hits "Print Ready", EasePrint
                   triggers a 4-way shredder: permanent Amazon S3 object purge, local server disk deletion, DynamoDB data
                   scrub, and a 24-hour TTL buffer. Your private data never lingers.
                 </p>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono">
-                <span className="text-emerald-400 font-bold">Privacy Protocol:</span> S3 delete_object + local os.remove + TTL Buffer
+              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+                <span className="text-emerald-700 font-bold">Privacy Protocol:</span> S3 delete_object + local os.remove + TTL Buffer
               </div>
             </div>
 
             {/* Pillar 3 */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 hover:border-indigo-500/40 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all flex flex-col justify-between shadow-sm">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-6">
                   <Layers className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">3. Autonomous Counter Orchestration</h3>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                <h3 className="text-xl font-bold text-slate-900 mb-3">3. Autonomous Counter Orchestration</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
                   Jobs are automatically categorized and routed based on specifications. Standard high-speed printouts are
                   directed to <strong>Counter 1 (Xerox)</strong>, while spiral, soft, and thesis jobs are routed to{" "}
                   <strong>Counter 2 (Binding)</strong>, eliminating bottlenecks at the physical counter.
                 </p>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono">
-                <span className="text-indigo-400 font-bold">Dispatch Engine:</span> Counter 1 (Xerox) • Counter 2 (Binding)
+              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+                <span className="text-indigo-700 font-bold">Dispatch Engine:</span> Counter 1 (Xerox) • Counter 2 (Binding)
               </div>
             </div>
 
             {/* Pillar 4 */}
-            <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 hover:border-sky-500/40 transition-all flex flex-col justify-between">
+            <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all flex flex-col justify-between shadow-sm">
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center mb-6">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
                   <RefreshCw className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3">4. Dynamic Pricing & Custom RAG Knowledge</h3>
-                <p className="text-slate-300 text-sm leading-relaxed mb-4">
+                <h3 className="text-xl font-bold text-slate-900 mb-3">4. Dynamic Pricing & Custom RAG Knowledge</h3>
+                <p className="text-slate-600 text-sm leading-relaxed mb-4">
                   Campus stationery shops have fluctuating paper costs. The Staff Dashboard features a live Customizations
                   Matrix where operators can modify B&W, color, or binding rates, and upload business documents (PDF/TXT)
                   that dynamically enrich the AI agent's RAG knowledge base.
                 </p>
               </div>
-              <div className="bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs text-slate-400 font-mono">
-                <span className="text-sky-400 font-bold">Customizer:</span> Live Rates Sync + In-Memory RAG Context Injection
+              <div className="bg-white p-3 rounded-xl border border-slate-200 text-xs text-slate-600 font-mono">
+                <span className="text-sky-700 font-bold">Customizer:</span> Live Rates Sync + In-Memory RAG Context Injection
               </div>
             </div>
           </div>
@@ -511,159 +509,159 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 5. DIRECT COMPARISON MATRIX: TRADITIONAL XEROX VS EASEPRINT                */}
       {/* ========================================================================= */}
-      <section className="py-20 lg:py-28 bg-slate-900/90 border-b border-slate-800">
+      <section className="py-16 lg:py-24 bg-slate-50/70 border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-xs font-bold uppercase tracking-widest text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+          <div className="text-center max-w-3xl mx-auto mb-14">
+            <span className="text-xs font-bold uppercase tracking-widest text-indigo-700 bg-indigo-50 px-3 py-1 rounded-full border border-indigo-200">
               The Head-to-Head
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Comparison with Existing Systems
             </h2>
-            <p className="text-slate-400 mt-3 text-base sm:text-lg">
+            <p className="text-slate-600 mt-2 text-base sm:text-lg">
               See why moving from traditional campus print shops to EasePrint transforms the entire university experience:
             </p>
           </div>
 
-          {/* Table Container */}
-          <div className="overflow-x-auto rounded-2xl border border-slate-700 bg-slate-950 shadow-2xl">
+          {/* Table Container (Light Theme) */}
+          <div className="overflow-x-auto rounded-2xl border border-slate-200 bg-white shadow-lg">
             <table className="w-full text-left text-sm">
-              <thead className="bg-slate-900/90 text-xs uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <thead className="bg-slate-100 text-xs uppercase tracking-wider text-slate-600 border-b border-slate-200">
                 <tr>
                   <th className="py-4 px-6 font-semibold">Feature / Workflow</th>
-                  <th className="py-4 px-6 font-semibold text-rose-400 bg-rose-950/20">Traditional Campus Xerox</th>
-                  <th className="py-4 px-6 font-semibold text-cyan-400 bg-cyan-950/30">EasePrint Cloud Platform</th>
+                  <th className="py-4 px-6 font-semibold text-rose-700 bg-rose-50">Traditional Campus Xerox</th>
+                  <th className="py-4 px-6 font-semibold text-sky-800 bg-sky-50">EasePrint Cloud Platform</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800 text-slate-300">
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <Smartphone className="w-4 h-4 text-slate-400" />
+              <tbody className="divide-y divide-slate-200 text-slate-700">
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-slate-500" />
                     <span>Order Placement</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Cluttered WhatsApp DMs or standing in crowd</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-cyan-300">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-sky-700">
+                      <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Instant Web Portal + WhatsApp & Telegram Bots</span>
                     </div>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <Shield className="w-4 h-4 text-slate-400" />
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-slate-500" />
                     <span>Student Data Privacy</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Documents saved forever on shared public desktop</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-emerald-300">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-emerald-700">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                       <span>100% Zero-Retention Shredder (S3/Local deleted on ready)</span>
                     </div>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <AlertTriangle className="w-4 h-4 text-slate-400" />
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 text-slate-500" />
                     <span>Malware & Virus Exposure</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>High risk: USB flash drives spread PC viruses</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-cyan-300">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-sky-700">
+                      <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Zero-Touch cloud upload (No USB ever required)</span>
                     </div>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <DollarSign className="w-4 h-4 text-slate-400" />
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <DollarSign className="w-4 h-4 text-slate-500" />
                     <span>Price Transparency</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Verbal guessing / surprise costs upon collection</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-cyan-300">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-sky-700">
+                      <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Instant AI rate calculation with itemized ₹ receipt</span>
                     </div>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-slate-400" />
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-slate-500" />
                     <span>Queue & Progress Tracking</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Zero visibility: Wait in crowd and interrupt staff</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-cyan-300">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-sky-700">
+                      <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Live status banner + pickup alert notification</span>
                     </div>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <Layers className="w-4 h-4 text-slate-400" />
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <Layers className="w-4 h-4 text-slate-500" />
                     <span>Pickup Organization</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>1 crowded counter with mixed Xerox and binding jobs</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-cyan-300">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-sky-700">
+                      <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Automated Counter 1 (Xerox) / Counter 2 (Binding)</span>
                     </div>
                   </td>
                 </tr>
 
-                <tr className="hover:bg-slate-900/40 transition-colors">
-                  <td className="py-4 px-6 font-medium text-white flex items-center gap-2">
-                    <Store className="w-4 h-4 text-slate-400" />
+                <tr className="hover:bg-slate-50/60 transition-colors">
+                  <td className="py-4 px-6 font-medium text-slate-900 flex items-center gap-2">
+                    <Store className="w-4 h-4 text-slate-500" />
                     <span>Store Price Customization</span>
                   </td>
-                  <td className="py-4 px-6 bg-rose-950/10">
-                    <div className="flex items-center gap-2 text-rose-300">
+                  <td className="py-4 px-6 bg-rose-50/30">
+                    <div className="flex items-center gap-2 text-rose-700">
                       <XCircle className="w-4 h-4 text-rose-500 shrink-0" />
                       <span>Fixed rates painted on walls; hard to adapt</span>
                     </div>
                   </td>
-                  <td className="py-4 px-6 bg-cyan-950/20 font-medium text-white">
-                    <div className="flex items-center gap-2 text-cyan-300">
-                      <CheckCircle2 className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <td className="py-4 px-6 bg-sky-50/40 font-semibold text-slate-900">
+                    <div className="flex items-center gap-2 text-sky-700">
+                      <CheckCircle2 className="w-4 h-4 text-sky-600 shrink-0" />
                       <span>Live web price matrix + custom RAG policy upload</span>
                     </div>
                   </td>
@@ -677,28 +675,28 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 6. WHY PEOPLE HAVE TO CHOOSE THIS PLATFORM (VALUE BY STAKEHOLDER)         */}
       {/* ========================================================================= */}
-      <section className="py-20 lg:py-28 bg-slate-950 border-b border-slate-800">
+      <section className="py-16 lg:py-24 bg-white border-b border-slate-200">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-12">
-            <span className="text-xs font-bold uppercase tracking-widest text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
+            <span className="text-xs font-bold uppercase tracking-widest text-emerald-700 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-200">
               The Value Proposition
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Why Choose EasePrint?
             </h2>
-            <p className="text-slate-400 mt-3 text-base sm:text-lg">
+            <p className="text-slate-600 mt-2 text-base sm:text-lg">
               Tailored specifically for both the student who needs urgent prints before class, and the campus store owner
               who wants smooth, profitable operations.
             </p>
 
             {/* Audience Toggle */}
-            <div className="inline-flex items-center bg-slate-900 p-1.5 rounded-2xl border border-slate-800 mt-8">
+            <div className="inline-flex items-center bg-slate-100 p-1.5 rounded-2xl border border-slate-200 mt-6">
               <button
                 onClick={() => setSelectedAudience("students")}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                className={`flex items-center space-x-2 px-5 py-2 rounded-xl text-sm font-bold transition-all ${
                   selectedAudience === "students"
-                    ? "bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-sky-700 shadow-sm shadow-slate-300/60"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <Users className="w-4 h-4" />
@@ -706,10 +704,10 @@ export default function LandingPage({ onSelectPortal }) {
               </button>
               <button
                 onClick={() => setSelectedAudience("staff")}
-                className={`flex items-center space-x-2 px-5 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                className={`flex items-center space-x-2 px-5 py-2 rounded-xl text-sm font-bold transition-all ${
                   selectedAudience === "staff"
-                    ? "bg-indigo-500 text-white shadow-md shadow-indigo-500/20"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-indigo-700 shadow-sm shadow-slate-300/60"
+                    : "text-slate-600 hover:text-slate-900"
                 }`}
               >
                 <Store className="w-4 h-4" />
@@ -720,34 +718,34 @@ export default function LandingPage({ onSelectPortal }) {
 
           {selectedAudience === "students" ? (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
                   <Clock className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Zero Waiting in Line</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Zero Waiting in Line</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
                   Send your assignment from hostel at 8:30 AM. Get notified when it's printed. Walk in at 8:55 AM, grab it
                   from Counter 1, and head straight to class without standing in a single line.
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center mb-6">
                   <Lock className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Complete Digital Privacy</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Complete Digital Privacy</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
                   Rest easy knowing your Aadhaar, bank statements, and project documents will not remain on a public shop
                   desktop for other students to snoop through. The file is purged permanently upon pickup.
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-cyan-500/40 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-sky-300 transition-all shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-6">
                   <Sparkles className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">AI Cost Optimization</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">AI Cost Optimization</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
                   Ask our AI agent how to get the most cost-effective format. Get instant advice on double-sided B&W savings,
                   spiral vs staple options, and pay the exact amount via UPI without needing cash change.
                 </p>
@@ -755,34 +753,34 @@ export default function LandingPage({ onSelectPortal }) {
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 text-indigo-400 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center mb-6">
                   <Zap className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">3x Higher Daily Throughput</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">3x Higher Daily Throughput</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
                   No more manually typing page counts, opening infected thumb drives, or searching for lost WhatsApp chats.
                   Every job arrives pre-validated with exact specs ready to print in 1 click.
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-sky-100 text-sky-700 flex items-center justify-center mb-6">
                   <Sliders className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Dynamic Price Matrix</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Dynamic Price Matrix</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
                   Update your standard B&W, color, or binding rates anytime from the dashboard. The AI agent immediately
                   quotes your updated rates to every student across Web, WhatsApp, and Telegram.
                 </p>
               </div>
 
-              <div className="p-8 rounded-3xl bg-slate-900/60 border border-slate-800 hover:border-indigo-500/40 transition-all">
-                <div className="w-12 h-12 rounded-2xl bg-amber-500/10 text-amber-400 flex items-center justify-center mb-6">
+              <div className="p-8 rounded-3xl bg-slate-50 border border-slate-200 hover:border-indigo-300 transition-all shadow-sm">
+                <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mb-6">
                   <DollarSign className="w-6 h-6" />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-2">Zero Revenue Leakage</h3>
-                <p className="text-sm text-slate-300 leading-relaxed">
+                <h3 className="text-xl font-bold text-slate-900 mb-2">Zero Revenue Leakage</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">
                   Eliminate unpaid prints, duplicate misprints, and verbal calculation errors. Integrated Razorpay & UPI
                   verification ensures every page printed is tracked, recorded, and accounted for.
                 </p>
@@ -793,17 +791,17 @@ export default function LandingPage({ onSelectPortal }) {
       </section>
 
       {/* ========================================================================= */}
-      {/* 7. INTERACTIVE SAVINGS & IMPACT CALCULATOR                                 */}
+      {/* 7. INTERACTIVE SAVINGS & IMPACT CALCULATOR (LIGHT THEME)                  */}
       {/* ========================================================================= */}
-      <section className="py-20 lg:py-28 bg-slate-900/90 border-b border-slate-800">
+      <section className="py-16 lg:py-24 bg-slate-50/70 border-b border-slate-200">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="bg-gradient-to-b from-slate-800/80 to-slate-950 p-8 sm:p-12 rounded-3xl border border-slate-700 shadow-2xl">
+          <div className="bg-white p-8 sm:p-12 rounded-3xl border border-slate-200 shadow-xl shadow-slate-200/50">
             <div className="text-center max-w-2xl mx-auto mb-10">
-              <span className="text-xs font-bold uppercase tracking-widest text-cyan-400 bg-cyan-500/10 px-3 py-1 rounded-full border border-cyan-500/20">
+              <span className="text-xs font-bold uppercase tracking-widest text-sky-700 bg-sky-50 px-3 py-1 rounded-full border border-sky-200">
                 Interactive ROI Tool
               </span>
-              <h2 className="text-3xl font-black text-white mt-3">Calculate Your Semester Savings</h2>
-              <p className="text-sm text-slate-400 mt-2">
+              <h2 className="text-3xl font-black text-slate-900 mt-3">Calculate Your Semester Savings</h2>
+              <p className="text-sm text-slate-600 mt-2">
                 Slide your estimated monthly printout volume to see how much time and hassle EasePrint eliminates.
               </p>
             </div>
@@ -811,8 +809,8 @@ export default function LandingPage({ onSelectPortal }) {
             {/* Slider Control */}
             <div className="mb-10">
               <div className="flex justify-between items-center mb-3">
-                <span className="text-sm font-semibold text-slate-300">Monthly Document Pages:</span>
-                <span className="text-2xl font-black text-cyan-400 font-mono">{monthlyPages} pages</span>
+                <span className="text-sm font-semibold text-slate-700">Monthly Document Pages:</span>
+                <span className="text-2xl font-black text-sky-700 font-mono">{monthlyPages} pages</span>
               </div>
               <input
                 type="range"
@@ -821,7 +819,7 @@ export default function LandingPage({ onSelectPortal }) {
                 step="10"
                 value={monthlyPages}
                 onChange={(e) => setMonthlyPages(Number(e.target.value))}
-                className="w-full h-3 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-cyan-400"
+                className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-sky-600"
               />
               <div className="flex justify-between text-[11px] text-slate-500 mt-1">
                 <span>10 pages (Light)</span>
@@ -832,25 +830,25 @@ export default function LandingPage({ onSelectPortal }) {
 
             {/* Metrics Output Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 text-center">
-              <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-                <div className="text-3xl font-black text-cyan-400 font-mono">~{timeSavedMinutes} mins</div>
-                <div className="text-xs font-semibold text-slate-300 uppercase tracking-wide mt-1">
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="text-3xl font-black text-sky-700 font-mono">~{timeSavedMinutes} mins</div>
+                <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-1">
                   Queue Waiting Time Saved
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">Equivalent to {Math.round(timeSavedMinutes / 50)} full study lectures</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-                <div className="text-3xl font-black text-emerald-400 font-mono">0% Risk</div>
-                <div className="text-xs font-semibold text-slate-300 uppercase tracking-wide mt-1">
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="text-3xl font-black text-emerald-600 font-mono">0% Risk</div>
+                <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-1">
                   Malware & Leak Exposure
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">100% digital shredder on completion</p>
               </div>
 
-              <div className="p-5 rounded-2xl bg-slate-900/80 border border-slate-800">
-                <div className="text-3xl font-black text-indigo-400 font-mono">{queuesAvoided} Queues</div>
-                <div className="text-xs font-semibold text-slate-300 uppercase tracking-wide mt-1">
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200">
+                <div className="text-3xl font-black text-indigo-700 font-mono">{queuesAvoided} Queues</div>
+                <div className="text-xs font-semibold text-slate-700 uppercase tracking-wide mt-1">
                   Physical Bottlenecks Avoided
                 </div>
                 <p className="text-[11px] text-slate-500 mt-1">Instant counter grab-and-go</p>
@@ -863,13 +861,13 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 8. FREQUENTLY ASKED QUESTIONS (FAQ)                                       */}
       {/* ========================================================================= */}
-      <section className="py-20 lg:py-28 bg-slate-950 border-b border-slate-800">
+      <section className="py-16 lg:py-24 bg-white border-b border-slate-200">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-2xl mx-auto mb-14">
-            <span className="text-xs font-bold uppercase tracking-widest text-slate-400 bg-slate-800 px-3 py-1 rounded-full border border-slate-700">
+            <span className="text-xs font-bold uppercase tracking-widest text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200">
               Clear Answers
             </span>
-            <h2 className="text-3xl sm:text-4xl font-black text-white mt-4 tracking-tight">
+            <h2 className="text-3xl sm:text-4xl font-black text-slate-900 mt-3 tracking-tight">
               Frequently Asked Questions
             </h2>
           </div>
@@ -878,21 +876,21 @@ export default function LandingPage({ onSelectPortal }) {
             {faqs.map((faq, idx) => (
               <div
                 key={idx}
-                className="rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden transition-all"
+                className="rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden transition-all shadow-sm"
               >
                 <button
                   onClick={() => setOpenFaq(openFaq === idx ? -1 : idx)}
-                  className="w-full p-5 text-left flex items-center justify-between font-semibold text-white hover:text-cyan-400 transition-colors"
+                  className="w-full p-5 text-left flex items-center justify-between font-semibold text-slate-900 hover:text-sky-700 transition-colors"
                 >
                   <span className="text-base">{faq.q}</span>
                   {openFaq === idx ? (
-                    <ChevronUp className="w-5 h-5 text-cyan-400 shrink-0" />
+                    <ChevronUp className="w-5 h-5 text-sky-600 shrink-0" />
                   ) : (
                     <ChevronDown className="w-5 h-5 text-slate-400 shrink-0" />
                   )}
                 </button>
                 {openFaq === idx && (
-                  <div className="px-5 pb-5 text-sm text-slate-300 leading-relaxed border-t border-slate-800/60 pt-3">
+                  <div className="px-5 pb-5 text-sm text-slate-600 leading-relaxed border-t border-slate-200/60 pt-3">
                     {faq.a}
                   </div>
                 )}
@@ -905,11 +903,9 @@ export default function LandingPage({ onSelectPortal }) {
       {/* ========================================================================= */}
       {/* 9. FINAL BOTTOM DUAL CTA BANNER                                           */}
       {/* ========================================================================= */}
-      <section className="py-20 bg-gradient-to-b from-slate-900 to-slate-950 text-center relative overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[300px] bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-
+      <section className="py-20 bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-700 text-center relative overflow-hidden text-white">
         <div className="max-w-4xl mx-auto px-4 relative z-10 space-y-6">
-          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-xs font-semibold text-cyan-400">
+          <div className="inline-flex items-center space-x-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md border border-white/30 text-xs font-semibold text-white">
             <Award className="w-3.5 h-3.5" />
             <span>Ready for the Next Class</span>
           </div>
@@ -918,24 +914,24 @@ export default function LandingPage({ onSelectPortal }) {
             Ready to Experience the Fastest Printout on Campus?
           </h2>
 
-          <p className="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto">
+          <p className="text-sky-100 text-base sm:text-lg max-w-2xl mx-auto">
             Choose your role below to launch the interactive portal or manage the shop floor right now.
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <button
               onClick={() => onSelectPortal("student")}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-base shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all hover:scale-105"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-white hover:bg-slate-50 text-slate-900 font-bold text-base shadow-xl flex items-center justify-center gap-2 transition-all hover:scale-105"
             >
-              <Printer className="w-5 h-5" />
+              <Printer className="w-5 h-5 text-sky-600" />
               <span>Launch Student Portal</span>
             </button>
 
             <button
               onClick={() => onSelectPortal("staff")}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-base border border-slate-700 flex items-center justify-center gap-2 transition-all hover:scale-105"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-slate-900/40 hover:bg-slate-900/60 text-white font-bold text-base border border-white/30 backdrop-blur-md flex items-center justify-center gap-2 transition-all hover:scale-105"
             >
-              <Shield className="w-5 h-5 text-indigo-400" />
+              <Shield className="w-5 h-5 text-white" />
               <span>Open Staff Command Center</span>
             </button>
           </div>
