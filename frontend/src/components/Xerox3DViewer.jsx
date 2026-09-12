@@ -39,14 +39,15 @@ export default function Xerox3DViewer() {
     const scene = new THREE.Scene();
     scene.background = null;
 
-    // --- Responsive Placement: Centered on mobile, Framed cleanly to the right on desktop ---
+    // --- Responsive Placement: Small & moving on the right at top of page, grows as user scrolls ---
     const isMobile = width < 1024;
-    const machinePosX = isMobile ? 0 : 2.2;
-    const targetLookX = isMobile ? 0 : 0.4;
+    const machinePosX = isMobile ? 0 : 2.6;
+    const targetLookX = isMobile ? 0 : 0.6;
+    const initialBaseScale = isMobile ? 0.52 : 0.46;
 
     // --- Camera Setup with Wide Framing & Offset Target ---
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
-    const cameraPos = new THREE.Vector3(isMobile ? 4.2 : 4.6, 3.4, 6.6);
+    const cameraPos = new THREE.Vector3(isMobile ? 4.2 : 5.4, 3.4, 6.8);
     const cameraTarget = new THREE.Vector3(targetLookX, 0.9, 0);
     camera.position.copy(cameraPos);
     camera.lookAt(cameraTarget);
@@ -54,13 +55,13 @@ export default function Xerox3DViewer() {
     // Ample vertical headroom, pulled-back distances, machine framed on right
     const PRESETS = [
       // 0: Overview - Balanced wide 3/4 angle, entire machine kiosk framed gracefully
-      { pos: new THREE.Vector3(isMobile ? 4.2 : 5.6, 3.4, 6.8), target: new THREE.Vector3(isMobile ? 0 : 1.2, 0.9, 0) },
+      { pos: new THREE.Vector3(isMobile ? 4.2 : 5.4, 3.4, 6.8), target: new THREE.Vector3(isMobile ? 0 : 1.3, 0.9, 0) },
       // 1: Scanner - Distinct top-down angle showcasing the optical scanner & feeder
-      { pos: new THREE.Vector3(isMobile ? 0.0 : 2.0, 5.4, 4.4), target: new THREE.Vector3(isMobile ? 0 : 2.0, 1.8, 0) },
+      { pos: new THREE.Vector3(isMobile ? 0.0 : 2.4, 5.4, 4.4), target: new THREE.Vector3(isMobile ? 0 : 2.4, 1.8, 0) },
       // 2: Touch HUD - Focused perspective on the live touchscreen console and glowing LED
-      { pos: new THREE.Vector3(isMobile ? 2.6 : 3.8, 3.2, 3.8), target: new THREE.Vector3(isMobile ? 1.15 : 2.8, 1.7, 0.6) },
+      { pos: new THREE.Vector3(isMobile ? 2.6 : 3.9, 3.2, 3.8), target: new THREE.Vector3(isMobile ? 1.15 : 2.9, 1.7, 0.6) },
       // 3: Paper Trays - Low ground perspective showcasing the dual cassettes & gliding paper
-      { pos: new THREE.Vector3(isMobile ? 2.4 : 3.6, 1.8, 4.6), target: new THREE.Vector3(isMobile ? 0 : 1.8, 0.7, 0.3) },
+      { pos: new THREE.Vector3(isMobile ? 2.4 : 3.7, 1.8, 4.6), target: new THREE.Vector3(isMobile ? 0 : 1.9, 0.7, 0.3) },
     ];
 
     // --- Renderer Setup ---
@@ -127,8 +128,8 @@ export default function Xerox3DViewer() {
 
     // --- Machine Group ---
     const machineGroup = new THREE.Group();
-    // Scaled down to 70% per user request, positioned cleanly on right side
-    machineGroup.scale.set(0.7, 0.7, 0.7);
+    // Initially small on the right side per user request; increases in size on scroll
+    machineGroup.scale.set(initialBaseScale, initialBaseScale, initialBaseScale);
     machineGroup.position.set(machinePosX, -0.15, 0);
     scene.add(machineGroup);
 
@@ -322,6 +323,13 @@ export default function Xerox3DViewer() {
     fillLight.position.set(0, 4, 5);
     scene.add(fillLight);
 
+    // --- Scroll Listener for Interactive Scaling ---
+    let scrollY = window.scrollY || 0;
+    const handleScroll = () => {
+      scrollY = window.scrollY || window.pageYOffset || 0;
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
     // --- Animation & Cinematic Tour Loop ---
     let clock = new THREE.Clock();
     let animationFrameId;
@@ -332,6 +340,25 @@ export default function Xerox3DViewer() {
       animationFrameId = requestAnimationFrame(animate);
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
+
+      // Dynamic Scroll-Driven Scaling:
+      // At top of page (scrollY = 0): small (~0.46) on the right side.
+      // When user scrolls down: increases in size (up to ~0.84) with the same ongoing animations
+      const scrollProgress = Math.min(1, Math.max(0, scrollY / 420));
+      const targetScale = initialBaseScale + scrollProgress * (isMobile ? 0.24 : 0.38);
+
+      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.08);
+      machineGroup.scale.set(currentScale, currentScale, currentScale);
+
+      // Smooth horizontal position adjustment on scroll
+      const currentX = isMobile ? 0 : (machinePosX - scrollProgress * 0.3);
+      groundMesh.position.x = currentX;
+      ringMesh.position.x = currentX;
+
+      // Scale ground shadow and ring with the machine
+      const scaleFactor = currentScale / 0.7;
+      ringMesh.scale.setScalar(scaleFactor * (1.0 + Math.sin(elapsedTime * 2.0) * 0.04));
+      groundMesh.scale.setScalar(scaleFactor);
 
       // Cinematic Tour Sequencer
       if (isTourPlayingRef.current) {
@@ -350,11 +377,13 @@ export default function Xerox3DViewer() {
       currentLookAt.lerp(targetPreset.target, 0.05);
       camera.lookAt(currentLookAt);
 
-      // Subtle Ambient Machine Rotation & Floating
+      // Subtle Ambient Machine Rotation & Floating (Active at all sizes)
       if (activeStageRef.current === 0) {
+        machineGroup.position.x = currentX;
         machineGroup.position.y = -0.15 + Math.sin(elapsedTime * 1.5) * 0.02;
         machineGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.06;
       } else {
+        machineGroup.position.x = currentX;
         machineGroup.position.y = -0.15;
         machineGroup.rotation.y = 0;
       }
@@ -382,8 +411,6 @@ export default function Xerox3DViewer() {
         glidingPaper.scale.set(1, 1, 1);
       }
 
-      ringMesh.scale.setScalar(1.0 + Math.sin(elapsedTime * 2.0) * 0.04);
-
       renderer.render(scene, camera);
     };
 
@@ -403,6 +430,7 @@ export default function Xerox3DViewer() {
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
+      window.removeEventListener("scroll", handleScroll);
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }

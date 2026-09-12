@@ -83,11 +83,11 @@ export default function LandingPage({ onSelectPortal }) {
   return (
     <div className="bg-white text-slate-800 min-h-screen selection:bg-sky-500 selection:text-white">
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION WITH 3D XEROX MACHINE BEHIND TEXT (LIGHT & SUBTLE BLUR)   */}
+      {/* 1. HERO SECTION WITH 3D XEROX MACHINE (LIGHT, SCROLL-SCALED & FOCUSED)    */}
       {/* ========================================================================= */}
-      <section className="relative min-h-[680px] lg:min-h-[760px] flex items-center justify-center pt-8 pb-16 lg:pt-14 lg:pb-20 overflow-hidden border-b border-slate-200 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/50">
-        {/* Full-bleed 3D Background Layer: Behind all text, light, scaled 70% & softly focused */}
-        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-75 filter blur-[0.6px] transition-all duration-700">
+      <section className="relative min-h-[580px] lg:min-h-[660px] flex items-start justify-center pt-4 pb-12 lg:pt-7 lg:pb-16 overflow-hidden border-b border-slate-200 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/50">
+        {/* Full-bleed 3D Background Layer: Behind all text, light, interactive scroll scaling & softly focused */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-80 filter blur-[0.4px] transition-all duration-700">
           <Xerox3DViewer />
         </div>
 
@@ -95,10 +95,10 @@ export default function LandingPage({ onSelectPortal }) {
         <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-white/60 pointer-events-none z-[1]" />
 
         {/* Foreground Content: Sitting crisply on top of the moving blurred 3D background */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full pt-2 lg:pt-4">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
             {/* Left Column: Main Headline, Value Prop, CTAs & Trust Badges (7 cols) */}
-            <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
+            <div className="lg:col-span-7 space-y-4 lg:space-y-5 text-center lg:text-left">
               {/* Pill Badge */}
               <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-sky-200 text-xs font-semibold text-sky-700 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
@@ -106,22 +106,22 @@ export default function LandingPage({ onSelectPortal }) {
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-slate-900 drop-shadow-sm">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-slate-900 drop-shadow-sm max-w-xl">
                 The Autonomous{" "}
                 <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   Campus Print Cloud
                 </span>
               </h1>
 
-              {/* Subhead */}
-              <p className="text-base sm:text-lg text-slate-600 max-w-2xl font-normal leading-relaxed mx-auto lg:mx-0">
+              {/* Subhead / Quotation - constrained width so it never touches the 3D model */}
+              <p className="text-base sm:text-lg text-slate-600 max-w-lg lg:max-w-[490px] font-normal leading-relaxed mx-auto lg:mx-0">
                 Eliminate WhatsApp queue chaos, USB malware risks, and lost files. Order from your hostel bed, let Bedrock
                 AI quote instant ₹ rates, and pick up your{" "}
                 <strong className="text-sky-700 font-semibold">100% Zero-Retention shredded</strong> prints with zero wait.
               </p>
 
               {/* Dual Direct Portal Entry Actions */}
-              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-2">
+              <div className="flex flex-wrap items-center justify-center lg:justify-start gap-4 pt-1">
                 <button
                   onClick={() => onSelectPortal("student")}
                   className="group flex items-center space-x-3 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-sky-600 via-blue-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-bold text-base shadow-lg shadow-sky-600/25 hover:shadow-xl hover:shadow-sky-600/35 hover:-translate-y-0.5 transition-all cursor-pointer"
