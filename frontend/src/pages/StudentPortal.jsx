@@ -16,6 +16,9 @@ import {
   ShieldCheck,
   QrCode,
   X,
+  Smartphone,
+  Building,
+  Check,
 } from "lucide-react";
 import {
   calculatePrice,
@@ -125,8 +128,17 @@ export default function StudentPortal() {
 
   const [paymentModal, setPaymentModal] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
+  const [paymentTab, setPaymentTab] = useState("upi"); // "upi" | "cards" | "netbanking"
+  const [mockCardNumber, setMockCardNumber] = useState("4111 2222 3333 4444");
+  const [mockCardExpiry, setMockCardExpiry] = useState("12/28");
+  const [mockCardCvv, setMockCardCvv] = useState("786");
+  const [mockCardName, setMockCardName] = useState("Karthik Battiprolu");
+  const [mockUpiId, setMockUpiId] = useState("karthik@okaxis");
+  const [selectedUpiApp, setSelectedUpiApp] = useState("gpay");
+  const [selectedBank, setSelectedBank] = useState("sbi");
+  const [saveCardRbi, setSaveCardRbi] = useState(true);
 
-  // Submit Print Order with Razorpay Payment
+  // Submit Print Order with Razorpay Test Mode Checkout
   const handleStartCheckout = async () => {
     if (!fileData) {
       alert("Please upload a document first.");
@@ -142,57 +154,52 @@ export default function StudentPortal() {
 
     try {
       const order = await createPaymentOrder(amountInr, newJobId);
-
-      // If Razorpay JS loaded and real key provided (not mock)
-      if (
-        window.Razorpay &&
-        order.key_id &&
-        !order.mock &&
-        !order.key_id.includes("mock") &&
-        !order.key_id.includes("demo")
-      ) {
-        const rzp = new window.Razorpay({
-          key: order.key_id,
-          amount: order.amount,
-          currency: "INR",
-          name: "EasePrint Xerox Hub",
-          description: `Print Order (${pages} pgs, ${copies} copies)`,
-          order_id: order.order_id,
-          image: "https://cdn-icons-png.flaticon.com/512/2874/2874808.png",
-          handler: async function (resp) {
-            await finalizeOrderWithPayment(newJobId, resp.razorpay_payment_id, order.order_id);
-          },
-          prefill: {
-            name: studentName,
-            email: "student@campus.edu",
-            contact: "9876543210",
-          },
-          theme: { color: "#0284c7" },
-        });
-        rzp.open();
-        setSubmitting(false);
-      } else {
-        // Open instant in-app Razorpay modal (test simulation)
-        setPaymentModal({
-          jobId: newJobId,
-          orderId: order.order_id,
-          amountInr: amountInr,
-          keyId: order.key_id,
-          mock: order.mock,
-        });
-        setSubmitting(false);
-      }
+      setPaymentModal({
+        jobId: newJobId,
+        orderId: order.order_id || ("order_test_" + Date.now()),
+        amountInr: amountInr,
+        keyId: order.key_id || "rzp_test_TavfilameY1r04",
+        mock: true,
+      });
     } catch (e) {
       console.warn("Razorpay order creation fallback:", e);
       setPaymentModal({
         jobId: newJobId,
-        orderId: "order_sim_" + Date.now(),
+        orderId: "order_test_" + Date.now(),
         amountInr: amountInr,
-        keyId: "rzp_test_sim",
+        keyId: "rzp_test_TavfilameY1r04",
         mock: true,
       });
+    } finally {
       setSubmitting(false);
     }
+  };
+
+  // Optional: Launch raw Razorpay popup if user explicitly desires external gateway iframe
+  const handleOpenRawRazorpay = () => {
+    if (!paymentModal || !window.Razorpay) {
+      alert("Razorpay checkout SDK not available in this browser.");
+      return;
+    }
+    const rzp = new window.Razorpay({
+      key: paymentModal.keyId,
+      amount: Math.round(paymentModal.amountInr * 100),
+      currency: "INR",
+      name: "EasePrint Xerox Hub",
+      description: `Print Order (${pages} pgs, ${copies} copies)`,
+      order_id: paymentModal.orderId.startsWith("order_test_") ? undefined : paymentModal.orderId,
+      image: "https://cdn-icons-png.flaticon.com/512/2874/2874808.png",
+      handler: async function (resp) {
+        await finalizeOrderWithPayment(paymentModal.jobId, resp.razorpay_payment_id, paymentModal.orderId);
+      },
+      prefill: {
+        name: studentName,
+        email: "student@campus.edu",
+        contact: "8309112619",
+      },
+      theme: { color: "#0284c7" },
+    });
+    rzp.open();
   };
 
   const finalizeOrderWithPayment = async (jobId, paymentId, orderId) => {
@@ -648,86 +655,320 @@ export default function StudentPortal() {
         </div>
       </div>
 
-      {/* Razorpay In-App Payment Modal (Simulated / Test Mode Fallback) */}
+      {/* Razorpay Test Mode Checkout Modal (Pre-filled Mock Details + UPI + Instant Confirm) */}
       {paymentModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl max-w-md w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col">
-            {/* Razorpay Header */}
-            <div className="bg-[#0c2340] text-white p-5 flex items-center justify-between">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-8 h-8 rounded-lg bg-sky-500 flex items-center justify-center font-black text-white text-base">
-                  R
-                </div>
-                <div>
-                  <h3 className="font-bold text-sm leading-tight flex items-center space-x-1.5">
-                    <span>Razorpay Secure Checkout</span>
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  </h3>
-                  <p className="text-[10px] text-slate-300">EasePrint Campus Xerox • Order #{paymentModal.jobId}</p>
-                </div>
-              </div>
-              <button
-                onClick={() => setPaymentModal(null)}
-                className="w-7 h-7 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
+            {/* Top Red Diagonal Ribbon for Test Mode */}
+            <div className="absolute top-3 right-10 bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-full shadow-md z-20 flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
+              <span>Test API Mode</span>
             </div>
 
-            {/* Amount Display */}
-            <div className="p-6 bg-slate-50/70 border-b border-slate-100 flex items-center justify-between">
+            {/* Left Column: Razorpay / EasePrint Branding (Cyan / Navy) */}
+            <div className="md:w-5/12 bg-gradient-to-b from-[#0c2340] via-[#034694] to-[#0284c7] text-white p-6 flex flex-col justify-between relative overflow-hidden">
+              <div className="space-y-6 relative z-10">
+                {/* Brand Header */}
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center font-black text-white text-lg shadow-inner">
+                    🖨️
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm tracking-wide text-white leading-tight">
+                      EasePrint Xerox Hub
+                    </h3>
+                    <p className="text-[10px] text-sky-200">Campus Cloud Print Station</p>
+                  </div>
+                </div>
+
+                {/* Price Summary */}
+                <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15">
+                  <span className="text-[10px] uppercase tracking-wider text-sky-200 font-bold block">
+                    Price Summary
+                  </span>
+                  <div className="text-3xl font-black text-white mt-1">
+                    ₹{paymentModal.amountInr.toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-sky-100/90 mt-1 flex items-center space-x-1">
+                    <span>Order:</span>
+                    <span className="font-mono font-semibold">{paymentModal.jobId}</span>
+                  </div>
+                </div>
+
+                {/* Using As Contact Pill */}
+                <div className="bg-black/20 backdrop-blur-sm rounded-xl p-3 border border-white/10 flex items-center space-x-2.5 text-xs text-white">
+                  <div className="w-6 h-6 rounded-full bg-sky-400/30 flex items-center justify-center text-xs">
+                    👤
+                  </div>
+                  <div className="truncate">
+                    <div className="text-[10px] text-sky-200">Paying as</div>
+                    <div className="font-bold truncate">+91 83091 12619</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom Trust Badge */}
+              <div className="pt-6 relative z-10 border-t border-white/15 text-[10px] text-sky-200/90 flex items-center justify-between">
+                <span className="flex items-center space-x-1">
+                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>Razorpay Test API</span>
+                </span>
+                <span className="font-mono text-[9px] text-sky-300">256-Bit SSL</span>
+              </div>
+            </div>
+
+            {/* Right Column: Interactive Payment Methods & Auto-filled Mock Form */}
+            <div className="md:w-7/12 p-5 sm:p-6 flex flex-col justify-between bg-slate-50/50">
               <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Amount Payable</span>
-                <div className="text-3xl font-black text-slate-900">₹{paymentModal.amountInr.toFixed(2)}</div>
+                {/* Header with Close */}
+                <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-slate-900">Payment Options</h4>
+                    <p className="text-[11px] text-slate-500">Mock details pre-filled for 1-click confirmation</p>
+                  </div>
+                  <button
+                    onClick={() => setPaymentModal(null)}
+                    className="w-8 h-8 rounded-full bg-slate-200/70 hover:bg-slate-300 text-slate-700 flex items-center justify-center transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Method Navigation Tabs */}
+                <div className="grid grid-cols-3 gap-1.5 bg-slate-200/70 p-1 rounded-2xl mt-4">
+                  <button
+                    onClick={() => setPaymentTab("upi")}
+                    className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      paymentTab === "upi"
+                        ? "bg-white text-sky-700 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Smartphone className="w-3.5 h-3.5" />
+                    <span>UPI / QR</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentTab("cards")}
+                    className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      paymentTab === "cards"
+                        ? "bg-white text-sky-700 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <CreditCard className="w-3.5 h-3.5" />
+                    <span>Cards</span>
+                  </button>
+                  <button
+                    onClick={() => setPaymentTab("netbanking")}
+                    className={`flex items-center justify-center space-x-1.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                      paymentTab === "netbanking"
+                        ? "bg-white text-sky-700 shadow-sm"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                  >
+                    <Building className="w-3.5 h-3.5" />
+                    <span>Netbanking</span>
+                  </button>
+                </div>
+
+                {/* TAB 1: UPI & QR Code */}
+                {paymentTab === "upi" && (
+                  <div className="mt-4 space-y-3.5 animate-in fade-in duration-150">
+                    {/* Quick UPI Apps */}
+                    <div>
+                      <span className="text-[11px] font-bold text-slate-600 mb-1.5 block">
+                        Popular UPI Apps (Test Verification)
+                      </span>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { id: "gpay", label: "GPay", color: "bg-blue-50 text-blue-700 border-blue-200" },
+                          { id: "phonepe", label: "PhonePe", color: "bg-purple-50 text-purple-700 border-purple-200" },
+                          { id: "paytm", label: "Paytm", color: "bg-sky-50 text-sky-700 border-sky-200" },
+                          { id: "cred", label: "BHIM", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+                        ].map((app) => (
+                          <button
+                            key={app.id}
+                            onClick={() => setSelectedUpiApp(app.id)}
+                            className={`py-2 px-1 rounded-xl border text-[11px] font-extrabold flex flex-col items-center justify-center transition-all ${
+                              selectedUpiApp === app.id
+                                ? `${app.color} ring-2 ring-sky-500 font-black shadow-sm`
+                                : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                            }`}
+                          >
+                            <span>📱 {app.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Pre-filled Mock UPI ID */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                          Pre-Filled Mock UPI ID
+                        </label>
+                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                          <Check className="w-3 h-3" />
+                          <span>Auto-Filled</span>
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={mockUpiId}
+                        onChange={(e) => setMockUpiId(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        placeholder="yourname@okaxis"
+                      />
+                      <p className="text-[10px] text-emerald-600 mt-1 flex items-center space-x-1 font-medium">
+                        <CheckCircle2 className="w-3 h-3" />
+                        <span>Ready to confirm immediately with 0% gateway surcharge</span>
+                      </p>
+                    </div>
+
+                    {/* Scan QR Visual */}
+                    <div className="border border-dashed border-sky-300 bg-sky-50/50 rounded-2xl p-3 flex items-center space-x-3">
+                      <div className="w-12 h-12 rounded-xl bg-white border border-sky-200 p-1 flex items-center justify-center shrink-0 shadow-sm">
+                        <QrCode className="w-10 h-10 text-slate-800" />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-xs font-bold text-slate-900">Scan & Pay Any UPI App</div>
+                        <div className="text-[10px] text-slate-500 leading-tight">
+                          Or click confirm below to instantly simulate successful UPI authorization.
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 2: Cards (Pre-Filled Test Card) */}
+                {paymentTab === "cards" && (
+                  <div className="mt-4 space-y-3 animate-in fade-in duration-150">
+                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center space-x-2 text-[11px] text-emerald-800 font-semibold">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                      <span>Mock test card credentials auto-filled. You can directly confirm!</span>
+                    </div>
+
+                    {/* Pre-filled Card Inputs */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-sm">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                          Card Number (Test Visa)
+                        </label>
+                        <input
+                          type="text"
+                          value={mockCardNumber}
+                          onChange={(e) => setMockCardNumber(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                            MM / YY
+                          </label>
+                          <input
+                            type="text"
+                            value={mockCardExpiry}
+                            onChange={(e) => setMockCardExpiry(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                            CVV
+                          </label>
+                          <input
+                            type="text"
+                            value={mockCardCvv}
+                            onChange={(e) => setMockCardCvv(e.target.value)}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                          />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
+                          Cardholder Name
+                        </label>
+                        <input
+                          type="text"
+                          value={mockCardName}
+                          onChange={(e) => setMockCardName(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
+                        />
+                      </div>
+
+                      <label className="flex items-center space-x-2 text-[11px] text-slate-600 pt-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={saveCardRbi}
+                          onChange={(e) => setSaveCardRbi(e.target.checked)}
+                          className="rounded text-sky-600 focus:ring-sky-500"
+                        />
+                        <span>Save this card as per RBI guidelines (Mock Tokenized)</span>
+                      </label>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 3: Netbanking */}
+                {paymentTab === "netbanking" && (
+                  <div className="mt-4 space-y-3 animate-in fade-in duration-150">
+                    <span className="text-[11px] font-bold text-slate-600 block">
+                      Choose Bank for Direct Test Debiting
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "sbi", name: "State Bank of India", icon: "🏛️" },
+                        { id: "hdfc", name: "HDFC Bank", icon: "🏦" },
+                        { id: "icici", name: "ICICI Bank", icon: "💳" },
+                        { id: "axis", name: "Axis Bank", icon: "🏧" },
+                      ].map((bank) => (
+                        <button
+                          key={bank.id}
+                          onClick={() => setSelectedBank(bank.id)}
+                          className={`p-3 rounded-2xl border text-left flex items-center space-x-2.5 transition-all ${
+                            selectedBank === bank.id
+                              ? "bg-sky-50 border-sky-400 ring-2 ring-sky-300 font-bold"
+                              : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50"
+                          }`}
+                        >
+                          <span className="text-xl">{bank.icon}</span>
+                          <span className="text-xs">{bank.name}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
-              <span className="text-[11px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full flex items-center space-x-1">
-                <span>🧪 Test Mode</span>
-              </span>
-            </div>
 
-            {/* Payment Options */}
-            <div className="p-6 space-y-4">
-              <span className="text-xs font-bold text-slate-700">Choose Payment Method</span>
+              {/* Action Confirmation Buttons */}
+              <div className="mt-5 pt-4 border-t border-slate-200/80 space-y-2">
+                <button
+                  onClick={() =>
+                    finalizeOrderWithPayment(
+                      paymentModal.jobId,
+                      "pay_test_" + Math.random().toString(36).substring(2, 11),
+                      paymentModal.orderId
+                    )
+                  }
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-700 hover:from-sky-700 hover:to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-sky-600/25 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+                >
+                  <ShieldCheck className="w-5 h-5 text-emerald-300" />
+                  <span>Direct Confirm & Pay ₹{paymentModal.amountInr.toFixed(2)} (Test API)</span>
+                </button>
 
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-3 border-2 border-indigo-500 rounded-xl bg-indigo-50/30 flex flex-col items-center justify-center text-center cursor-pointer">
-                  <span className="text-lg">📱</span>
-                  <span className="text-[11px] font-bold text-slate-800 mt-1">UPI / QR</span>
-                </div>
-                <div className="p-3 border border-slate-200 rounded-xl bg-white flex flex-col items-center justify-center text-center opacity-60">
-                  <span className="text-lg">💳</span>
-                  <span className="text-[11px] font-bold text-slate-800 mt-1">Cards</span>
-                </div>
-                <div className="p-3 border border-slate-200 rounded-xl bg-white flex flex-col items-center justify-center text-center opacity-60">
-                  <span className="text-lg">🏦</span>
-                  <span className="text-[11px] font-bold text-slate-800 mt-1">NetBanking</span>
-                </div>
-              </div>
-
-              <div className="border border-dashed border-slate-300 rounded-2xl p-4 flex items-center justify-center space-x-3 bg-white">
-                <QrCode className="w-12 h-12 text-slate-800" />
-                <div className="text-left">
-                  <div className="text-xs font-bold text-slate-900">Scan UPI QR to Pay</div>
-                  <div className="text-[10px] text-slate-500">Supports Google Pay, PhonePe, Paytm, BHIM</div>
+                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pt-1">
+                  <span>No real money charged • Sandbox Mode</span>
+                  <button
+                    onClick={handleOpenRawRazorpay}
+                    className="text-sky-600 hover:underline font-semibold"
+                  >
+                    Open native Razorpay popup
+                  </button>
                 </div>
               </div>
-
-              <button
-                onClick={() =>
-                  finalizeOrderWithPayment(
-                    paymentModal.jobId,
-                    "pay_" + Math.random().toString(36).substring(2, 11),
-                    paymentModal.orderId
-                  )
-                }
-                className="w-full py-3.5 px-4 rounded-xl bg-[#0c2340] hover:bg-[#14325a] text-white font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-lg"
-              >
-                <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Simulate Instant Success Payment (₹{paymentModal.amountInr.toFixed(2)})</span>
-              </button>
-              <p className="text-[10px] text-center text-slate-400">
-                Secured by 256-bit encryption • Campus Xerox Payment Gateway
-              </p>
             </div>
           </div>
         </div>
