@@ -1,32 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef } from "react";
 import * as THREE from "three";
-import { Play, Pause, Eye, Zap, Layers, Cpu } from "lucide-react";
 
 export default function Xerox3DViewer() {
   const mountRef = useRef(null);
-
-  // Snappy Cinematic Tour States (Shortened durations for quick, energetic transitions)
-  const STAGES = [
-    { id: "overview", label: "Overview", desc: "Autonomous Enterprise Cloud Station", icon: Eye, duration: 3.5 },
-    { id: "photonics", label: "Laser Core", desc: "Visible Rotating Optical Imaging Drum", icon: Zap, duration: 3.0 },
-    { id: "screen", label: "Touch HUD", desc: "Articulated Curved OLED Dispatch Console", icon: Cpu, duration: 3.0 },
-    { id: "trays", label: "Paper Trays", desc: "Dual Motorized Cassettes with LED Gauges", icon: Layers, duration: 3.0 },
-  ];
-
-  const [activeStageIndex, setActiveStageIndex] = useState(0);
-  const [isTourPlaying, setIsTourPlaying] = useState(true);
-  const isTourPlayingRef = useRef(isTourPlaying);
-  isTourPlayingRef.current = isTourPlaying;
-
-  const activeStageRef = useRef(0);
-  activeStageRef.current = activeStageIndex;
-
-  const stageTimeRef = useRef(0);
-
-  const selectStage = (index) => {
-    setActiveStageIndex(index);
-    stageTimeRef.current = 0;
-  };
 
   useEffect(() => {
     const container = mountRef.current;
@@ -446,146 +422,33 @@ export default function Xerox3DViewer() {
     fillLight.position.set(0, 4, 5);
     scene.add(fillLight);
 
-    // --- Responsive Scroll Listener with Snappy Velocity ---
-    let rawScrollY = window.scrollY || window.pageYOffset || 0;
-    let smoothScrollY = rawScrollY;
-    const handleScroll = () => {
-      rawScrollY = window.scrollY || window.pageYOffset || 0;
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    // --- Animation Loop (Model is FIXED in place — no scroll transitions) ---
+    // --- Static Model Setup (100% Still, No Movement, No Transitions) ---
+    const fixedX = isMobile ? 0 : machinePosX;
+    const fixedY = isMobile ? 0.0 : 0.20;
+    const fixedScale = isMobile ? 0.40 : initialBaseScale;
 
-    // --- Animation & Quick Responsive Transitions Loop ---
-    let clock = new THREE.Clock();
+    machineGroup.scale.set(fixedScale, fixedScale, fixedScale);
+    machineGroup.position.set(fixedX, fixedY, 0);
+    machineGroup.rotation.set(0, 0, 0);
+
+    groundMesh.position.set(fixedX, fixedY, 0);
+    outerRingMesh.position.set(fixedX, fixedY + 0.01, 0);
+    innerRingMesh.position.set(fixedX, fixedY + 0.02, 0);
+
+    const scaleFactor = fixedScale / 0.48;
+    outerRingMesh.scale.setScalar(scaleFactor);
+    innerRingMesh.scale.setScalar(scaleFactor);
+    groundMesh.scale.setScalar(scaleFactor);
+
+    // Fixed camera at Overview perspective - zero movement
+    camera.position.set(isMobile ? 4.2 : 5.4, 3.4, 6.8);
+    camera.lookAt(new THREE.Vector3(isMobile ? 0 : 1.3, 0.9, 0));
+
     let animationFrameId;
-
-    const currentLookAt = new THREE.Vector3().copy(cameraTarget);
 
     const animate = () => {
       animationFrameId = requestAnimationFrame(animate);
-      const delta = clock.getDelta();
-      const elapsedTime = clock.getElapsedTime();
-
-      // Quick Responsive Scroll Interpolation (Snappy velocity, zero sluggishness)
-      smoothScrollY = THREE.MathUtils.lerp(smoothScrollY, rawScrollY, 0.22);
-
-      // QUICK RESPONSIVE TRAJECTORY:
-      // - 0px - 380px: Fast, gratifying glide from right (x = 2.4) into middle (x = 0.0), scale 0.36 -> 0.52
-      // - 380px - 1300px: Weaves smoothly back to right (x = 2.2) behind problem bottlenecks
-      // - 1300px - 2200px: Weaves to middle (x = 0.0) behind architecture
-      // - 2200px+: Settles to right (x = 2.2)
-      let targetX, targetScale, targetY;
-      if (isMobile) {
-        targetX = 0;
-        targetScale = 0.40;
-        targetY = 0.0 - Math.min(1, smoothScrollY / 2000) * 0.40;
-      } else {
-        if (smoothScrollY <= 380) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 380);
-          targetX = THREE.MathUtils.lerp(2.4, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.36, 0.52, t);
-          targetY = THREE.MathUtils.lerp(0.20, -0.18, t);
-        } else if (smoothScrollY <= 1300) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 380, 1300);
-          targetX = THREE.MathUtils.lerp(0.0, 2.2, t);
-          targetScale = THREE.MathUtils.lerp(0.52, 0.46, t);
-          targetY = THREE.MathUtils.lerp(-0.18, -0.36, t);
-        } else if (smoothScrollY <= 2200) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 1300, 2200);
-          targetX = THREE.MathUtils.lerp(2.2, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.46, 0.52, t);
-          targetY = THREE.MathUtils.lerp(-0.36, -0.50, t);
-        } else {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 2200, 3200);
-          targetX = THREE.MathUtils.lerp(0.0, 2.2, t);
-          targetScale = THREE.MathUtils.lerp(0.52, 0.46, t);
-          targetY = THREE.MathUtils.lerp(-0.50, -0.65, t);
-        }
-      }
-
-      // Snappy Position & Scale Interpolation (0.16 factor ensures immediate response)
-      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.16);
-      machineGroup.scale.set(currentScale, currentScale, currentScale);
-
-      const baseAnimY = activeStageRef.current === 0 ? Math.sin(elapsedTime * 1.5) * 0.02 : 0;
-      const currentX = THREE.MathUtils.lerp(machineGroup.position.x, targetX, 0.16);
-      const currentY = THREE.MathUtils.lerp(machineGroup.position.y - baseAnimY, targetY, 0.16);
-
-      machineGroup.position.x = currentX;
-      machineGroup.position.y = currentY + baseAnimY;
-
-      groundMesh.position.x = currentX;
-      groundMesh.position.y = currentY;
-      outerRingMesh.position.x = currentX;
-      outerRingMesh.position.y = currentY + 0.01;
-      innerRingMesh.position.x = currentX;
-      innerRingMesh.position.y = currentY + 0.02;
-
-      // Rotate Dual Counter-Rotating Base Rings
-      outerRingMesh.rotation.z += delta * 0.45;
-      innerRingMesh.rotation.z -= delta * 0.65;
-
-      // Scale ground shadow and rings proportionally with machine scale
-      const scaleFactor = currentScale / 0.48;
-      outerRingMesh.scale.setScalar(scaleFactor * (1.0 + Math.sin(elapsedTime * 2.5) * 0.03));
-      innerRingMesh.scale.setScalar(scaleFactor * (1.0 + Math.cos(elapsedTime * 2.5) * 0.03));
-      groundMesh.scale.setScalar(scaleFactor);
-
-      // Continuous High-Speed Spin of Internal Photonics Laser Drum
-      drumMesh.rotation.x += delta * 3.5;
-
-      // Brisk Cinematic Tour Sequencer (3.0s - 3.5s per stage)
-      if (isTourPlayingRef.current) {
-        stageTimeRef.current += delta;
-        const currentStageDef = STAGES[activeStageRef.current];
-        if (stageTimeRef.current >= currentStageDef.duration) {
-          stageTimeRef.current = 0;
-          const nextIndex = (activeStageRef.current + 1) % STAGES.length;
-          setActiveStageIndex(nextIndex);
-        }
-      }
-
-      // Quick-Responding Camera Interpolation (0.12 factor)
-      const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
-      const offsetX = currentX - machinePosX;
-      const offsetY = currentY - 0.20;
-
-      const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.55, offsetY * 0.35, 0));
-      const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.75, offsetY * 0.45, 0));
-
-      camera.position.lerp(dynamicPresetPos, 0.12);
-      currentLookAt.lerp(dynamicPresetTarget, 0.12);
-      camera.lookAt(currentLookAt);
-
-      // Subtle Ambient Kiosk Rotation
-      if (activeStageRef.current === 0) {
-        machineGroup.rotation.y = Math.sin(elapsedTime * 0.5) * 0.05;
-      } else {
-        machineGroup.rotation.y = 0;
-      }
-
-      // High-Speed Optical Scanner Laser Sweep
-      const laserPos = Math.sin(elapsedTime * 3.2) * 0.66;
-      laserBar.position.x = laserPos;
-      laserLight.position.x = laserPos;
-      laserLight.intensity = 2.6 + Math.sin(elapsedTime * 7.0) * 0.8;
-
-      // Smart Document Gliding Output Cycle
-      const paperCycle = (elapsedTime * 0.85) % 1;
-      const startX = -0.7;
-      const endX = -1.26;
-      const startY = 1.52;
-      const endY = 1.38;
-
-      glidingPaper.position.x = startX + (endX - startX) * paperCycle;
-      glidingPaper.position.y = startY + (endY - startY) * paperCycle;
-      glidingPaper.rotation.z = -Math.PI * (0.02 + paperCycle * 0.05);
-
-      if (paperCycle > 0.88) {
-        glidingPaper.scale.setScalar(1 - (paperCycle - 0.88) * 4);
-      } else {
-        glidingPaper.scale.set(1, 1, 1);
-      }
-
       renderer.render(scene, camera);
     };
 
@@ -598,6 +461,7 @@ export default function Xerox3DViewer() {
       camera.aspect = newWidth / newHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(newWidth, newHeight);
+      renderer.render(scene, camera);
     };
 
     window.addEventListener("resize", handleResize);
@@ -605,7 +469,6 @@ export default function Xerox3DViewer() {
     return () => {
       cancelAnimationFrame(animationFrameId);
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("scroll", handleScroll);
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
       }
@@ -615,59 +478,11 @@ export default function Xerox3DViewer() {
 
   return (
     <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden">
-      {/* Full-bleed Three.js Canvas */}
+      {/* Full-bleed Three.js Canvas - Clean & Still */}
       <div
         ref={mountRef}
         className="w-full h-full flex items-center justify-center"
       />
-
-      {/* Floating Tour Stage Status Pill (Positioned cleanly below Navbar) */}
-      <div className="absolute top-20 right-4 sm:right-8 bg-white/85 backdrop-blur-md border border-slate-200/80 rounded-2xl px-3.5 py-1.5 shadow-md shadow-slate-200/50 flex items-center space-x-2.5 pointer-events-none z-30">
-        <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
-        </span>
-        <span className="text-[11px] font-semibold text-slate-700">
-          3D Showcase • <strong className="text-sky-700 font-bold">{STAGES[activeStageIndex].label}</strong>
-        </span>
-      </div>
-
-      {/* Bottom Cinematic Tour Controls */}
-      <div className="absolute bottom-4 right-4 sm:right-8 flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-1.5 shadow-lg shadow-slate-200/50 pointer-events-auto z-40">
-        <button
-          onClick={() => setIsTourPlaying(!isTourPlaying)}
-          className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-            isTourPlaying
-              ? "bg-sky-50 text-sky-700 border border-sky-200"
-              : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-          }`}
-          title={isTourPlaying ? "Pause Camera Tour" : "Play Camera Tour"}
-        >
-          {isTourPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-          <span className="hidden xs:inline">{isTourPlaying ? "Touring" : "Paused"}</span>
-        </button>
-
-        <div className="flex items-center bg-slate-100/90 p-0.5 rounded-xl">
-          {STAGES.map((s, idx) => {
-            const Icon = s.icon;
-            const isActive = activeStageIndex === idx;
-            return (
-              <button
-                key={s.id}
-                onClick={() => selectStage(idx)}
-                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
-                  isActive
-                    ? "bg-white text-sky-700 shadow-sm shadow-slate-300/60"
-                    : "text-slate-500 hover:text-slate-900"
-                }`}
-              >
-                <Icon className={`w-3 h-3 ${isActive ? "text-sky-600" : "text-slate-400"}`} />
-                <span className="hidden sm:inline">{s.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
     </div>
   );
 }

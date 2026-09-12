@@ -132,6 +132,12 @@ async def health_check():
     summary="Instant Hyderabad Print Pricing Calculator",
     tags=["Pricing"],
 )
+@app.post(
+    "/api/pricing",
+    response_model=PricingBreakdown,
+    summary="Instant Hyderabad Print Pricing Calculator (API alias for n8n)",
+    tags=["Pricing"],
+)
 async def calculate_price(req: PricingRequest):
     """Calculate instant price estimate using dynamic Hyderabad campus Xerox rates."""
     config = await customizations_manager.get_customizations()
@@ -247,6 +253,13 @@ async def upload_file(file: UploadFile = File(...)):
     summary="Enqueue incoming print job",
     tags=["Jobs"],
 )
+@app.post(
+    "/api/jobs",
+    response_model=JobEnqueueResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Enqueue incoming print job (API alias for n8n)",
+    tags=["Jobs"],
+)
 async def enqueue_job(job: JobIn):
     """
     Receives normalized print job from external n8n workflow or direct web upload,
@@ -309,28 +322,55 @@ async def enqueue_job(job: JobIn):
     summary="List all print jobs for Staff Dashboard",
     tags=["Jobs"],
 )
+@app.get(
+    "/api/jobs",
+    summary="List all print jobs for Staff Dashboard (API alias for n8n)",
+    tags=["Jobs"],
+)
 async def list_jobs():
     """Returns all jobs from DynamoDB for the Staff Command Dashboard."""
     dynamo = DynamoDBClient()
     items = await dynamo.list_all_jobs(limit=100)
 
-    # Format items
+    # Format items - filter out internal config and test telemetry
     results = []
     for record in items:
+        job_id = record.get("job_id")
+        if not job_id or job_id.startswith(("_config:", "test-", "api-test-")):
+            continue
+
         requirements = None
         if any(k in record for k in ["copies", "color_mode", "paper_size", "sides", "binding"]):
             requirements = {
-                "copies": record.get("copies"),
-                "color_mode": record.get("color_mode"),
-                "paper_size": record.get("paper_size"),
-                "sides": record.get("sides"),
-                "binding": record.get("binding"),
-                "pages": record.get("pages"),
+                "copies": record.get("copies", 1),
+                "color_mode": record.get("color_mode", "bw"),
+                "paper_size": record.get("paper_size", "A4"),
+                "sides": record.get("sides", "single"),
+                "binding": record.get("binding", "none"),
+                "pages": record.get("pages", 1),
             }
+
+        # Calculate accurate pricing if missing
+        total_amt = None
+        if record.get("total_amount_inr") is not None:
+            total_amt = float(record["total_amount_inr"])
+        elif requirements and requirements.get("pages"):
+            try:
+                p_res = calculate_hyderabad_price(
+                    pages=requirements.get("pages", 1),
+                    copies=requirements.get("copies", 1),
+                    color_mode=requirements.get("color_mode", "bw"),
+                    sides=requirements.get("sides", "single"),
+                    binding=requirements.get("binding", "none"),
+                )
+                total_amt = float(p_res.get("total_amount_inr", 0.0))
+            except Exception:
+                pass
+
         results.append({
-            "job_id": record.get("job_id"),
+            "job_id": job_id,
             "status": record.get("status", "received"),
-            "source_channel": record.get("source_channel"),
+            "source_channel": record.get("source_channel") or "web",
             "sender_id": record.get("sender_id"),
             "sender_name": record.get("sender_name", "Anonymous"),
             "message_text": record.get("message_text"),
@@ -338,7 +378,7 @@ async def list_jobs():
             "file_name": record.get("file_name"),
             "requirements": requirements,
             "pricing": record.get("pricing"),
-            "total_amount_inr": float(record["total_amount_inr"]) if record.get("total_amount_inr") is not None else None,
+            "total_amount_inr": total_amt,
             "pickup_counter": record.get("pickup_counter", "Counter 1"),
             "payment_status": record.get("payment_status", "unpaid"),
             "payment_id": record.get("payment_id"),
@@ -357,6 +397,12 @@ async def list_jobs():
     "/jobs/{job_id}",
     response_model=JobDetailResponse,
     summary="Get status, specifications, and pricing for a print job",
+    tags=["Jobs"],
+)
+@app.get(
+    "/api/jobs/{job_id}",
+    response_model=JobDetailResponse,
+    summary="Get status, specifications, and pricing for a print job (API alias for n8n)",
     tags=["Jobs"],
 )
 async def get_job_status(job_id: str):
@@ -464,16 +510,60 @@ async def student_chat(req: ChatRequest):
         "pages": req.pages or 1,
     }
 
-    # 3. Process with Bedrock Agent
-    agent = get_bedrock_agent()
-    result = await agent.process_job(job_data)
-
-    reply_text = result.get("reply", "Your request has been received.")
-    await session_store.append_message(composite_session, "assistant", reply_text)
-
+    # 3. Synchronous Intake via Live Published n8n AI Agent (with Bedrock Fallback)
+    reply_text = None
+    n8n_job_id = None
+    needs_clarification = False
     pricing_data = None
-    if "pricing" in result and result["pricing"]:
-        pricing_data = PricingBreakdown(**result["pricing"])
+
+    if getattr(settings, "N8N_INTAKE_URL", None):
+        try:
+            async with httpx.AsyncClient(timeout=25.0) as client:
+                r = await client.post(
+                    settings.N8N_INTAKE_URL,
+                    json={
+                        "sessionId": req.session_id,
+                        "name": req.sender_name or "Student",
+                        "message": req.message,
+                    },
+                )
+                if r.status_code == 200:
+                    n8n_res = r.json()
+                    if n8n_res.get("reply"):
+                        reply_text = n8n_res.get("reply")
+                        n8n_job_id = n8n_res.get("job_id")
+                        if n8n_res.get("pricing") and isinstance(n8n_res["pricing"], dict):
+                            try:
+                                pricing_data = PricingBreakdown(**n8n_res["pricing"])
+                            except Exception:
+                                pass
+                        logger.info(f"Received reply from live published n8n agent for session {req.session_id}")
+        except Exception as exc:
+            logger.warning(f"Live n8n intake unavailable or timed out, falling back to Bedrock: {exc}")
+
+    # Fallback to local Bedrock Print Agent
+    if not reply_text:
+        agent = get_bedrock_agent()
+        result = await agent.process_job(job_data)
+        reply_text = result.get("reply", "Your request has been received.")
+        needs_clarification = result.get("needs_clarification", False)
+        if "pricing" in result and result["pricing"]:
+            pricing_data = PricingBreakdown(**result["pricing"])
+
+    # If pricing is not provided by upstream agent but specs exist, evaluate structured pricing breakdown
+    if pricing_data is None:
+        try:
+            agent = get_bedrock_agent()
+            h_res = await agent._run_heuristic_evaluator(job_data)
+            if "pricing" in h_res and h_res["pricing"]:
+                pricing_data = PricingBreakdown(**h_res["pricing"])
+        except Exception as exc:
+            logger.warning(f"Could not compute pricing fallback: {exc}")
+
+    if n8n_job_id:
+        job_id = n8n_job_id
+
+    await session_store.append_message(composite_session, "assistant", reply_text)
 
     audit_logger.log(
         "AI_CHAT",
@@ -484,7 +574,7 @@ async def student_chat(req: ChatRequest):
             "session_id": req.session_id,
             "message": req.message,
             "reply": reply_text[:120],
-            "needs_clarification": result.get("needs_clarification", False),
+            "needs_clarification": needs_clarification,
         },
     )
 
@@ -492,15 +582,20 @@ async def student_chat(req: ChatRequest):
         reply=reply_text,
         session_id=req.session_id,
         job_id=job_id,
-        status="needs_info" if result.get("needs_clarification") else "queued",
+        status="needs_info" if needs_clarification else "queued",
         pricing=pricing_data,
-        needs_clarification=result.get("needs_clarification", False),
+        needs_clarification=needs_clarification,
     )
 
 
 @app.post(
     "/jobs/{job_id}/print-ready",
     summary="Trigger Backward Completion Alert (Prints Ready for Pickup)",
+    tags=["Fulfillment"],
+)
+@app.post(
+    "/api/jobs/{job_id}/print-ready",
+    summary="Trigger Backward Completion Alert (Prints Ready for Pickup) (API alias for n8n)",
     tags=["Fulfillment"],
 )
 async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
@@ -571,25 +666,20 @@ async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
     total_inr = record.get("total_amount_inr", 0.0)
 
     outbound_payload = {
-        "event": "print_ready",
-        "job_id": job_id,
-        "target_channel": target_channel,
-        "sender_id": sender_id,
-        "pickup_counter": req.pickup_counter,
-        "total_amount": total_inr,
-        "file_purged": True,
-        "message": f"🎉 Hey! Your print order #{job_id} is printed and ready! Total: ₹{total_inr:.2f}. Please collect it from {req.pickup_counter}. 🔒 (Your digital document has been permanently deleted from our cloud for student privacy).",
-        "completed_at": now_iso,
+        "target_channel": str(target_channel or "web").lower(),
+        "sender_id": str(sender_id or ""),
+        "job_id": str(job_id),
+        "total_amount": str(int(round(float(total_inr or 0)))),
+        "pickup_counter": req.pickup_counter or "Main Counter",
+        "message": f"Your print job #{job_id} is ready for pickup at {req.pickup_counter or 'Main Counter'}.",
     }
 
     dispatched = True
     try:
-        if settings.N8N_COMPLETION_URL:
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                await client.post(settings.N8N_COMPLETION_URL, json=outbound_payload)
-                logger.info(f"Dispatched print-ready alert to n8n for job {job_id}")
-        else:
-            dispatched = False
+        completion_url = settings.N8N_COMPLETION_URL or "https://astan8n.app.n8n.cloud/webhook/notify-student"
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(completion_url, json=outbound_payload)
+            logger.info(f"Dispatched print-ready alert to n8n ({completion_url}) for job {job_id} -> HTTP {resp.status_code}")
     except Exception as exc:
         logger.warning(f"Failed to post completion to n8n: {exc}")
         dispatched = False
@@ -711,28 +801,31 @@ async def verify_payment(req: VerifyPaymentRequest):
 
 
 @app.post("/jobs/{job_id}/reject", tags=["Jobs"])
+@app.post("/jobs/{job_id}/cancel", tags=["Jobs"])
+@app.post("/api/jobs/{job_id}/reject", tags=["Jobs"])
+@app.post("/api/jobs/{job_id}/cancel", tags=["Jobs"])
 async def reject_job(job_id: str, req: RejectJobRequest):
-    """Allows staff to reject unsuitable jobs with an automated reason and note."""
+    """Allows staff or students to reject/cancel jobs with an automated reason and note."""
     dynamo = DynamoDBClient()
     now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
     record = await dynamo.get_record_by_job_id(job_id)
     if not record:
-        raise HTTPException(status_code=404, detail=f"Job {job_id} not found.")
+        raise HTTPException(status_code=404, detail=f"Job {job_id} not found in database.")
 
     await dynamo.update_job_fields(
         job_id,
         {
             "status": "rejected",
             "rejection_reason": req.reason,
-            "staff_notes": req.staff_notes or f"Rejected: {req.reason}",
+            "staff_notes": req.staff_notes or f"Rejected/Cancelled: {req.reason}",
             "rejected_at": now_iso,
         },
     )
-    logger.info(f"Job {job_id} rejected by staff: {req.reason}")
+    logger.info(f"Job {job_id} cancelled/rejected: {req.reason}")
 
     audit_logger.log(
         "ORDER_REJECTED",
-        f"Order {job_id} rejected: {req.reason}",
+        f"Order {job_id} rejected/cancelled: {req.reason}",
         job_id=job_id,
         details={
             "reason": req.reason,
@@ -786,13 +879,33 @@ async def get_earnings_analytics():
 
     for item in items:
         job_id = item.get("job_id", "UNKNOWN")
+        if not job_id or job_id.startswith(("_config:", "test-", "api-test-")):
+            continue
+
         sender_name = item.get("sender_name", "Anonymous Student")
         channel = (item.get("source_channel") or "web").lower()
         status_val = item.get("status", "received")
         payment_status = item.get("payment_status", "unpaid")
         payment_id = item.get("payment_id")
         razorpay_order_id = item.get("razorpay_order_id")
+
+        # Pages & printing specs
+        pages = int(item.get("pages") or item.get("requirements", {}).get("pages") or 1)
+        copies = int(item.get("copies") or item.get("requirements", {}).get("copies") or 1)
+        color_mode = (item.get("color_mode") or item.get("requirements", {}).get("color_mode") or "bw").lower()
+        sides = item.get("sides") or item.get("requirements", {}).get("sides") or "single"
+        binding = item.get("binding") or item.get("requirements", {}).get("binding") or "none"
+        file_name = item.get("file_name") or "Document.pdf"
+        file_purged = item.get("file_purged", False) or (status_val in ["ready", "completed"])
+
         amount = float(item.get("total_amount_inr") or item.get("pricing", {}).get("total_amount_inr") or 0.0)
+        if amount <= 0.0 and (pages > 0 or copies > 0):
+            try:
+                calc_val = calculate_hyderabad_price(pages=pages, copies=copies, color_mode=color_mode, sides=sides, binding=binding)
+                amount = float(calc_val.get("total_amount_inr") or 0.0)
+            except Exception:
+                pass
+
         created_at = item.get("created_at") or item.get("received_at") or ""
         paid_at = item.get("paid_at") or ""
         completed_at = item.get("completed_at") or ""
@@ -806,13 +919,13 @@ async def get_earnings_analytics():
         # Status counts
         if status_val in ["completed", "ready"]:
             completed_orders += 1
-        elif status_val in ["queued", "received", "printing"]:
+        elif status_val in ["queued", "received", "printing", "needs_info"]:
             queued_orders += 1
         elif status_val == "rejected":
             rejected_orders += 1
 
-        # Revenue attribution
-        is_paid = (payment_status == "paid")
+        # Revenue attribution (Online paid OR counter completed pickup)
+        is_paid = (payment_status == "paid") or (status_val in ["completed", "ready"] and amount > 0)
         if is_paid:
             total_revenue += amount
             if channel in channel_stats:
@@ -831,15 +944,6 @@ async def get_earnings_analytics():
                 counter_amount += amount
         else:
             counter_count += 1
-
-        # Pages & printing specs
-        pages = int(item.get("pages") or item.get("requirements", {}).get("pages") or 1)
-        copies = int(item.get("copies") or item.get("requirements", {}).get("copies") or 1)
-        color_mode = (item.get("color_mode") or item.get("requirements", {}).get("color_mode") or "bw").lower()
-        sides = item.get("sides") or item.get("requirements", {}).get("sides") or "single"
-        binding = item.get("binding") or item.get("requirements", {}).get("binding") or "none"
-        file_name = item.get("file_name") or "Document.pdf"
-        file_purged = item.get("file_purged", False) or (status_val in ["ready", "completed"])
 
         sheets = pages * copies
         if sides == "double":
@@ -864,36 +968,35 @@ async def get_earnings_analytics():
             binding_revenue += b_rev
             print_revenue += max(0.0, amount - b_rev)
 
-        # Payment record row
+        formatted_date = created_at[:16].replace("T", " ") if created_at else "—"
+
+        # Streamlined Payment Record
         payment_records.append({
             "job_id": job_id,
             "customer_name": sender_name,
-            "channel": channel,
-            "amount_inr": amount,
-            "payment_status": payment_status,
-            "payment_id": payment_id or "—",
-            "razorpay_order_id": razorpay_order_id or "—",
-            "paid_at": paid_at or "—",
-            "created_at": created_at,
+            "channel": channel.upper(),
+            "amount_inr": round(amount, 2),
+            "payment_status": payment_status.upper(),
+            "payment_id": payment_id or ("UPI/Cash" if is_paid else "Pending"),
+            "created_at": formatted_date,
         })
 
-        # Printout record row
+        # Streamlined Printout Record with readable specs
+        specs_str = f"{pages} pgs × {copies} • {color_mode.upper()} • {sides.capitalize()}"
+        if binding and binding != "none":
+            specs_str += f" • {binding.capitalize()}"
+
         printout_records.append({
             "job_id": job_id,
             "customer_name": sender_name,
             "file_name": file_name,
+            "specs": specs_str,
             "pages": pages,
             "copies": copies,
-            "total_sheets": sheets,
-            "color_mode": color_mode,
-            "sides": sides,
-            "binding": binding,
-            "total_amount_inr": amount,
-            "status": status_val,
-            "payment_status": payment_status,
-            "file_purged": file_purged,
-            "created_at": created_at,
-            "completed_at": completed_at or "—",
+            "total_amount_inr": round(amount, 2),
+            "status": status_val.upper(),
+            "payment_status": payment_status.upper(),
+            "created_at": formatted_date,
         })
 
     # Sort descending

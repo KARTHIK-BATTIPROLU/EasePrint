@@ -18,8 +18,10 @@ print('\n[1] Checking AWS IAM Identity...')
 try:
     sts = boto3.client('sts', **session_kwargs)
     identity = sts.get_caller_identity()
-    print(f'  [SUCCESS] Authenticated as: {identity.get(\"Arn\")}')
-    print(f'  Account ID: {identity.get(\"Account\")}')
+    arn = identity.get("Arn")
+    acc = identity.get("Account")
+    print(f'  [SUCCESS] Authenticated as: {arn}')
+    print(f'  Account ID: {acc}')
 except Exception as e:
     print(f'  [FAILED] STS Authentication: {e}')
 

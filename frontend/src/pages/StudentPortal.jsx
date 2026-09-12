@@ -25,6 +25,7 @@ import {
   fetchJobDetails,
   createPaymentOrder,
   verifyPayment,
+  cancelJob,
 } from "../api";
 
 export default function StudentPortal() {
@@ -245,6 +246,20 @@ export default function StudentPortal() {
       alert("Error queueing order: " + err.message);
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  // Handle Student Order Cancellation
+  const handleCancelOrder = async () => {
+    if (!activeJobId) return;
+    if (!window.confirm("Are you sure you want to cancel your print order?")) return;
+    try {
+      await cancelJob(activeJobId, "Cancelled by student from web portal");
+      const details = await fetchJobDetails(activeJobId);
+      setJobStatus(details);
+      alert(`Order #${activeJobId} has been successfully cancelled.`);
+    } catch (err) {
+      alert("Could not cancel order: " + err.message);
     }
   };
 
@@ -551,6 +566,23 @@ export default function StudentPortal() {
                       <p className="text-[11px] font-bold text-emerald-700 mt-1 flex items-center space-x-1">
                         <span>🔒 Digital file permanently shredded from cloud for your privacy.</span>
                       </p>
+                    )}
+                    {jobStatus?.status !== "completed" && jobStatus?.status !== "rejected" && (
+                      <div className="mt-2.5">
+                        <button
+                          type="button"
+                          onClick={handleCancelOrder}
+                          className="text-xs font-bold text-rose-600 hover:text-rose-700 hover:underline flex items-center space-x-1 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          <span>Cancel My Order</span>
+                        </button>
+                      </div>
+                    )}
+                    {jobStatus?.status === "rejected" && (
+                      <div className="mt-2.5 p-2 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-700 font-bold">
+                        ⚠️ Order Cancelled / Rejected: {jobStatus?.raw_fields?.rejection_reason || "Cancelled"}
+                      </div>
                     )}
                   </div>
                 </div>

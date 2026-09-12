@@ -42,12 +42,12 @@ class DynamoDBClient:
         self.table_name = settings.DYNAMODB_TABLE_NAME
         self.region = settings.AWS_REGION
         self.endpoint_url = settings.DYNAMODB_ENDPOINT_URL
-        self.is_configured = bool(
-            settings.AWS_ACCESS_KEY_ID or self.endpoint_url
-        )
         self._pk_name = "job_id"
 
-        if self.is_configured:
+        # Try to initialize boto3 DynamoDB using the default credential provider chain.
+        # This supports: env vars (AWS_ACCESS_KEY_ID), IAM Task Roles on ECS Fargate,
+        # EC2 instance profiles, and local endpoint URLs (DynamoDB Local).
+        try:
             boto_kwargs: Dict[str, Any] = {
                 "region_name": self.region,
             }
@@ -65,13 +65,15 @@ class DynamoDBClient:
                     self._pk_name = self.table.key_schema[0]["AttributeName"]
             except Exception:
                 pass
-        else:
+            self.is_configured = True
+        except Exception as exc:
             logger.warning(
-                "DynamoDB is not configured (missing AWS credentials or DYNAMODB_ENDPOINT_URL). "
+                f"DynamoDB client initialization failed ({exc}). "
                 "Operating in in-memory mock mode."
             )
             self.dynamodb = None
             self.table = None
+            self.is_configured = False
 
     @property
     def pk_name(self) -> str:

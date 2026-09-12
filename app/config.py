@@ -36,9 +36,11 @@ class Settings(BaseSettings):
     S3_BUCKET_NAME: str = "easeprint-documents"
     S3_ENDPOINT_URL: Optional[str] = None
 
-    # n8n Webhook Relay URLs
-    N8N_CALLBACK_URL: str = "http://localhost:5678/webhook/print-clarifications"
-    N8N_COMPLETION_URL: str = "http://localhost:5678/webhook/notify-student"
+    # n8n Webhook Outbound Relays (Live Published Workflow)
+    N8N_BASE_URL: str = "https://astan8n.app.n8n.cloud/webhook"
+    N8N_INTAKE_URL: str = "https://astan8n.app.n8n.cloud/webhook/intake/web"
+    N8N_CALLBACK_URL: str = "https://astan8n.app.n8n.cloud/webhook/intake/web"
+    N8N_COMPLETION_URL: str = "https://astan8n.app.n8n.cloud/webhook/notify-student"
 
     # Razorpay Payment Gateway (Test Mode)
     RAZORPAY_KEY_ID: Optional[str] = None

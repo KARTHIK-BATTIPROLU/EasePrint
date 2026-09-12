@@ -1,4 +1,4 @@
-﻿{
+{
   "name": "EasePrint - Omnichannel AI Print Intake & Fulfillment",
   "nodes": [
     {
@@ -159,7 +159,7 @@
     },
     {
       "parameters": {
-        "updates": ["message"],
+        "updates": ["message", "callback_query"],
         "additionalFields": { "download": true }
       },
       "id": "2c2b11dd-41b3-4feb-b0f0-f0cf50f3ed97",
@@ -171,7 +171,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const msg = item.json.message || {};\n  const chat = msg.chat || {};\n  const from = msg.from || {};\n  const hasFile = !!(item.binary && item.binary.data);\n  let fileName = null;\n  if (hasFile) {\n    fileName = (item.binary.data && item.binary.data.fileName) || (msg.document && msg.document.file_name) || 'uploaded_file.pdf';\n  }\n  out.push({ json: {\n    source_channel: 'telegram',\n    sender_id: String(chat.id || from.id || ''),\n    sender_name: [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Anonymous',\n    message_text: msg.text || msg.caption || '',\n    has_file: hasFile,\n    file_name: fileName,\n    received_at: new Date().toISOString(),\n  }, binary: item.binary });\n}\nreturn out;"
+        "jsCode": "const out = [];\nfor (const item of $input.all()) {\n  const msg = item.json.message || (item.json.callback_query && item.json.callback_query.message) || {};\n  const cb = item.json.callback_query || null;\n  const chat = msg.chat || (cb && cb.message && cb.message.chat) || {};\n  const from = (cb && cb.from) || msg.from || {};\n  const hasFile = !!(item.binary && item.binary.data);\n  let fileName = null;\n  if (hasFile) {\n    fileName = (item.binary.data && item.binary.data.fileName) || (msg.document && msg.document.file_name) || 'uploaded_file.pdf';\n  }\n  let text = (cb && cb.data) || msg.text || msg.caption || '';\n  out.push({ json: {\n    source_channel: 'telegram',\n    sender_id: String(chat.id || from.id || ''),\n    sender_name: [from.first_name, from.last_name].filter(Boolean).join(' ') || 'Student',\n    message_text: text,\n    has_file: hasFile,\n    file_name: fileName,\n    is_button_click: !!cb,\n    received_at: new Date().toISOString(),\n  }, binary: item.binary });\n}\nreturn out;"
       },
       "id": "8efe670d-6639-4590-a39e-1779852efec9",
       "name": "Normalize Telegram",
@@ -247,7 +247,7 @@
     {
       "parameters": {
         "operation": "upload",
-        "bucketName": "easeprint-documents",
+        "bucketName": "easeprint-documents-601548053760-us-east-1-an",
         "additionalFields": {
           "parentFolderKey": "=jobs/{{ $('Prepare Job').item.json.source_channel }}/{{ $('Prepare Job').item.json.sender_id }}"
         }
@@ -261,7 +261,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const out = [];\nconst jobItems = $('Prepare Job').all();\nconst inItems = $input.all();\nfor (let i = 0; i < inItems.length; i++) {\n  const job = ((jobItems[i] && jobItems[i].json) || (jobItems[0] && jobItems[0].json) || {});\n  const cur = inItems[i].json || {};\n  let fileS3Url = '';\n  if (cur.Location) fileS3Url = cur.Location;\n  else if (cur.Key) fileS3Url = 'https://easeprint-documents.s3.amazonaws.com/' + cur.Key;\n  else if (job.file_s3_url) fileS3Url = job.file_s3_url;\n  out.push({ json: {\n    job_id: job.job_id,\n    source_channel: job.source_channel,\n    sender_id: job.sender_id,\n    sender_name: job.sender_name || 'Anonymous',\n    status: 'received',\n    message_text: job.message_text || '',\n    file_s3_url: fileS3Url,\n    created_at: new Date().toISOString(),\n  } });\n}\nreturn out;"
+        "jsCode": "const out = [];\nconst jobItems = $('Prepare Job').all();\nconst inItems = $input.all();\nfor (let i = 0; i < inItems.length; i++) {\n  const job = ((jobItems[i] && jobItems[i].json) || (jobItems[0] && jobItems[0].json) || {});\n  const cur = inItems[i].json || {};\n  let fileS3Url = '';\n  if (cur.Location) fileS3Url = cur.Location;\n  else if (cur.Key) fileS3Url = 'https://easeprint-documents-601548053760-us-east-1-an.s3.amazonaws.com/' + cur.Key;\n  else if (job.file_s3_url) fileS3Url = job.file_s3_url;\n  out.push({ json: {\n    job_id: job.job_id,\n    source_channel: job.source_channel,\n    sender_id: job.sender_id,\n    sender_name: job.sender_name || 'Anonymous',\n    status: 'received',\n    message_text: job.message_text || '',\n    file_s3_url: fileS3Url,\n    created_at: new Date().toISOString(),\n  } });\n}\nreturn out;"
       },
       "id": "b4e3f8c9-028a-4280-bdf6-63ab4fa2cfa2",
       "name": "Assemble Job Record",
@@ -286,7 +286,7 @@
         "promptType": "define",
         "text": "={{ $('Assemble Job Record').item.json.message_text }}",
         "options": {
-          "systemMessage": "You are the EasePrint AI Specialist for a campus Xerox & print station in Hyderabad, Telangana. Your job is to intake student print requests, confirm print specifications, calculate accurate prices using the calculate_hyderabad_price tool, and queue confirmed jobs.\n\nHyderabad Xerox Pricing Rules:\n- A4 Black & White (Single-sided): ₹2 per page\n- A4 Black & White (Double-sided / Back-to-back): ₹3 per sheet (₹1.50 per side)\n- A4 Color Printout: ₹10 per page\n- Spiral Binding: ₹30 (up to 100 pages)\n- Soft Binding: ₹50\n- Hard Binding (Project Thesis): ₹180\n\nGuidelines:\n1. If the student hasn't specified copies, color mode (Color vs B&W), sides (Single vs Both sides), or binding, ask ONE clear clarifying question.\n2. When specifications are provided, run the calculate_hyderabad_price tool and state the itemized total in ₹ (INR).\n3. Once the student confirms, call the enqueue_and_persist_job tool to queue the job to SQS and set its DynamoDB status to 'queued', then reply confirming the order is completed with its job_id. Never fabricate prices or print specs.",
+          "systemMessage": "You are the EasePrint AI Specialist for a campus Xerox & print station in Hyderabad, Telangana.\nAdopt a friendly, efficient, and student-focused campus Xerox assistant tone with local Hyderabad warmth.\n\nHyderabad Xerox Pricing Matrix:\n- A4 Black & White (Single-sided): ₹2 per page\n- A4 Black & White (Double-sided / Back-to-back): ₹3 per sheet (₹1.50 per side)\n- A4 Color Printout: ₹10 per page\n- A4 Color Glossy: ₹15 per page\n- Spiral Binding: ₹30 (up to 100 pages)\n- Soft Binding: ₹50\n- Hard Binding (Project Thesis): ₹180\n- Corner Stapling: Free\n\nWorkflow Rules:\n1. If a document is uploaded or if print specifications are missing (number of copies, B&W vs Color, Single vs Double-sided, Binding), ask the student clearly and guide them that they can click the quick option buttons below or type their preferences.\n2. When specifications are provided, run the calculate_hyderabad_price tool to compute the itemized total in ₹ (INR).\n3. Provide an itemized summary (Pages, Copies, Sides, Binding, Total ₹).\n4. Once confirmed, confirm the order with its Job ID and notify them that staff will print it immediately. Never fabricate rates or assume unspecified requirements.",
           "maxIterations": 10
         }
       },
@@ -298,7 +298,7 @@
     },
     {
       "parameters": {
-        "model": "anthropic.claude-3-5-sonnet-20241022-v2:0",
+        "model": "us.amazon.nova-lite-v1:0",
         "options": {
           "temperature": 0.2
         }
@@ -324,10 +324,10 @@
     {
       "parameters": {
         "description": "Calculate the exact Hyderabad Xerox/print price in INR. Provide pages (int), copies (int), color_mode (\"color\" or \"bw\"), sides (\"single\" or \"double\"), binding (\"none\"|\"spiral\"|\"soft\"|\"hard\").",
-        "jsCode": "let input = query;\nif (typeof input === 'string') {\n  try { input = JSON.parse(input); } catch (e) { input = {}; }\n}\nconst pages = parseInt(input.pages, 10) || 0;\nconst copies = parseInt(input.copies, 10) || 1;\nconst colorMode = (input.color_mode || 'bw').toLowerCase();\nconst sides = (input.sides || 'single').toLowerCase();\nconst binding = (input.binding || 'none').toLowerCase();\n\nlet perPage;\nif (colorMode === 'color') {\n  perPage = 10;\n} else if (sides === 'double') {\n  perPage = 1.5;\n} else {\n  perPage = 2;\n}\nconst pagesCost = pages * perPage;\n\nconst bindingRates = { none: 0, spiral: 30, soft: 50, hard: 180 };\nconst bindingCost = bindingRates[binding] || 0;\n\nconst perCopy = pagesCost + bindingCost;\nconst total = perCopy * copies;\n\nconst breakdown = {\n  pages: pages,\n  copies: copies,\n  color_mode: colorMode,\n  sides: sides,\n  binding: binding,\n  per_page_rate_inr: perPage,\n  pages_cost_inr: pagesCost,\n  binding_cost_inr: bindingCost,\n  per_copy_inr: perCopy,\n};\n\nreturn JSON.stringify({ currency: 'INR', total_price: total, breakdown: breakdown });",
+        "jsCode": "let input = query;\nif (typeof input === 'string') {\n  try { input = JSON.parse(input); } catch (e) { input = {}; }\n}\nconst pages = parseInt(input.pages, 10) || 1;\nconst copies = parseInt(input.copies, 10) || 1;\nconst colorMode = (input.color_mode || 'bw').toLowerCase();\nconst sides = (input.sides || 'single').toLowerCase();\nconst binding = (input.binding || 'none').toLowerCase();\n\nlet perPage;\nif (colorMode === 'color') {\n  perPage = 10;\n} else if (sides === 'double') {\n  perPage = 1.5;\n} else {\n  perPage = 2;\n}\nconst pagesCost = pages * perPage;\n\nconst bindingRates = { none: 0, staple: 0, spiral: 30, soft: 50, hard: 180 };\nconst bindingCost = (bindingRates[binding] !== undefined ? bindingRates[binding] : 0);\n\nconst perCopy = pagesCost + bindingCost;\nconst total = perCopy * copies;\n\nconst breakdown = {\n  pages: pages,\n  copies: copies,\n  color_mode: colorMode,\n  sides: sides,\n  binding: binding,\n  per_page_rate_inr: perPage,\n  pages_cost_inr: pagesCost,\n  binding_cost_inr: bindingCost,\n  per_copy_inr: perCopy,\n};\n\nreturn JSON.stringify({ currency: 'INR', total_price: total, breakdown: breakdown });",
         "specifyInputSchema": true,
         "schemaType": "manual",
-        "inputSchema": "{\"type\":\"object\",\"properties\":{\"pages\":{\"type\":\"integer\"},\"copies\":{\"type\":\"integer\"},\"color_mode\":{\"type\":\"string\",\"enum\":[\"color\",\"bw\"]},\"sides\":{\"type\":\"string\",\"enum\":[\"single\",\"double\"]},\"binding\":{\"type\":\"string\",\"enum\":[\"none\",\"spiral\",\"soft\",\"hard\"]}},\"required\":[\"pages\",\"copies\",\"color_mode\",\"sides\",\"binding\"]}"
+        "inputSchema": "{\"type\":\"object\",\"properties\":{\"pages\":{\"type\":\"integer\"},\"copies\":{\"type\":\"integer\"},\"color_mode\":{\"type\":\"string\",\"enum\":[\"color\",\"bw\"]},\"sides\":{\"type\":\"string\",\"enum\":[\"single\",\"double\"]},\"binding\":{\"type\":\"string\",\"enum\":[\"none\",\"staple\",\"spiral\",\"soft\",\"hard\"]}},\"required\":[\"pages\",\"copies\",\"color_mode\",\"sides\",\"binding\"]}"
       },
       "id": "cb86ea98-f7ae-44d4-8bb1-b1e3a3859232",
       "name": "calculate_hyderabad_price",
@@ -408,6 +408,52 @@
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3.4,
       "position": [3280, 416]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Assemble Job Record').item.json.sender_id }}",
+        "text": "={{ $json.output }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        },
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  { "text": "📄 1 Copy", "additionalFields": { "callback_data": "1 copy" } },
+                  { "text": "📄 2 Copies", "additionalFields": { "callback_data": "2 copies" } },
+                  { "text": "📄 3 Copies", "additionalFields": { "callback_data": "3 copies" } }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  { "text": "⚫ B&W Single (₹2)", "additionalFields": { "callback_data": "bw single" } },
+                  { "text": "📄 B&W Duplex (₹1.5)", "additionalFields": { "callback_data": "bw double" } },
+                  { "text": "🎨 Color (₹10)", "additionalFields": { "callback_data": "color single" } }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  { "text": "📌 No Binding", "additionalFields": { "callback_data": "no binding" } },
+                  { "text": "🌀 Spiral (₹30)", "additionalFields": { "callback_data": "spiral binding" } },
+                  { "text": "📘 Hard Thesis (₹180)", "additionalFields": { "callback_data": "hard binding" } }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "id": "771fa1b2-29b4-4b52-9ef8-137a2fcf8810",
+      "name": "Send Telegram Interactive Reply",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [3504, 416]
     },
     {
       "parameters": {
@@ -511,8 +557,22 @@
     },
     {
       "parameters": {
+        "chatId": "={{ $json.body.sender_id }}",
+        "text": "={{ $json.body.message || '🎉 Hey! Your print order #' + $json.body.job_id + ' is printed and ready! Total: ₹' + $json.body.total_amount + '. Please collect it from ' + $json.body.pickup_counter + '. 🔒 (Your digital document has been permanently deleted from our cloud for student privacy).' }}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "9921bc2e-18ad-4c91-b384-219cb84f6723",
+      "name": "Notify Telegram Ready",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [448, 1024]
+    },
+    {
+      "parameters": {
         "respondWith": "json",
-        "responseBody": "={{ JSON.stringify({ status: 'notified', job_id: $json.body.job_id, message: '🎉 Hey! Your print order #' + $json.body.job_id + ' is ready! Total: ₹' + $json.body.total_amount + '. Please collect it from ' + $json.body.pickup_counter + '.' }) }}",
+        "responseBody": "={{ JSON.stringify({ status: 'notified', job_id: $json.body.job_id, message: $json.body.message }) }}",
         "options": { "responseCode": 200 }
       },
       "id": "3dc2d3dc-b2d2-4d32-b299-8ccac56a837c",
@@ -598,7 +658,7 @@
     "Route Reply By Channel": {
       "main": [
         [],
-        [],
+        [{ "node": "Send Telegram Interactive Reply", "type": "main", "index": 0 }],
         [{ "node": "Respond Web Reply", "type": "main", "index": 0 }]
       ]
     },
@@ -608,7 +668,7 @@
     "Route Completion By Channel": {
       "main": [
         [],
-        [],
+        [{ "node": "Notify Telegram Ready", "type": "main", "index": 0 }],
         [{ "node": "Notify Web", "type": "main", "index": 0 }]
       ]
     }

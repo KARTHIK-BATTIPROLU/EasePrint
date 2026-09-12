@@ -1,0 +1,41 @@
+# Git
+.git
+.gitignore
+
+# Environment secrets
+.env
+.env.*
+
+# Python
+__pycache__
+*.pyc
+*.pyo
+*.egg-info
+.pytest_cache
+.mypy_cache
+
+# Node
+frontend/node_modules
+
+# Local development state
+uploads/
+logs/
+config/store_customizations.json
+
+# IDE
+.vscode
+.idea
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Tests (not needed in production image)
+tests/
+
+# Documentation
+*.md
+!README.md
+
+# AWS deployment scripts (not needed inside container)
+aws/

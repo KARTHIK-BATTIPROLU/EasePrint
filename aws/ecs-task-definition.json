@@ -1,0 +1,90 @@
+{
+  "family": "easeprint-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::601548053760:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::601548053760:role/easeprintTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "easeprint-api",
+      "image": "601548053760.dkr.ecr.us-east-1.amazonaws.com/easeprint:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "AWS_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "DYNAMODB_TABLE_NAME",
+          "value": "EasePrintJobs"
+        },
+        {
+          "name": "S3_BUCKET_NAME",
+          "value": "easeprint-documents-601548053760-us-east-1-an"
+        },
+        {
+          "name": "BEDROCK_MODEL_ID",
+          "value": "us.amazon.nova-lite-v1:0"
+        },
+        {
+          "name": "BEDROCK_REGION",
+          "value": "us-east-1"
+        },
+        {
+          "name": "RAZORPAY_KEY_ID",
+          "value": "rzp_test_TavfilameY1r04"
+        },
+        {
+          "name": "RAZORPAY_KEY_SECRET",
+          "value": "MT5cElsPtXLfY3Qrf9tnstPo"
+        },
+        {
+          "name": "N8N_BASE_URL",
+          "value": "https://astan8n.app.n8n.cloud/webhook"
+        },
+        {
+          "name": "N8N_INTAKE_URL",
+          "value": "https://astan8n.app.n8n.cloud/webhook/intake/web"
+        },
+        {
+          "name": "N8N_COMPLETION_URL",
+          "value": "https://astan8n.app.n8n.cloud/webhook/notify-student"
+        },
+        {
+          "name": "APP_ENV",
+          "value": "production"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/easeprint",
+          "awslogs-region": "us-east-1",
+          "awslogs-stream-prefix": "ecs",
+          "awslogs-create-group": "true"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "curl -f http://localhost:8000/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 15
+      }
+    }
+  ]
+}

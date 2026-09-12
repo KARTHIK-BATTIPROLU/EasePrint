@@ -1,0 +1,311 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'EasePrint Cloud Deployment: VPC, ECS Fargate, IAM Roles, CloudWatch Logs for automated campus print queue services'
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: easeprint-prod
+    Description: Environment prefix for provisioned AWS resources
+
+  ContainerImage:
+    Type: String
+    Default: '601548053760.dkr.ecr.us-east-1.amazonaws.com/easeprint:latest'
+    Description: Amazon ECR repository image URI
+
+  DynamoDBTableName:
+    Type: String
+    Default: EasePrintJobs
+    Description: DynamoDB table name for order state and queues
+
+  S3BucketName:
+    Type: String
+    Default: easeprint-documents-601548053760-us-east-1-an
+    Description: S3 bucket name for document uploads
+
+  BedrockModelId:
+    Type: String
+    Default: us.amazon.nova-lite-v1:0
+    Description: Amazon Bedrock LLM model ID for intelligent print agent
+
+  RazorpayKeyId:
+    Type: String
+    Default: rzp_test_TavfilameY1r04
+    Description: Razorpay Test Key ID
+
+  RazorpayKeySecret:
+    Type: String
+    NoEcho: true
+    Default: MT5cElsPtXLfY3Qrf9tnstPo
+    Description: Razorpay Secret Key
+
+  N8nBaseUrl:
+    Type: String
+    Default: https://astan8n.app.n8n.cloud/webhook
+    Description: n8n cloud automation webhook base URL
+
+  N8nIntakeUrl:
+    Type: String
+    Default: https://astan8n.app.n8n.cloud/webhook/intake/web
+    Description: n8n synchronous student intake webhook URL
+
+  N8nCompletionUrl:
+    Type: String
+    Default: https://astan8n.app.n8n.cloud/webhook/notify-student
+    Description: n8n backward completion notification webhook URL
+
+Resources:
+  # ==========================================
+  # Networking: VPC, Subnet, Internet Gateway
+  # ==========================================
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-igw'
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      CidrBlock: 10.0.1.0/24
+      MapPublicIpOnLaunch: true
+      AvailabilityZone: !Select [0, !GetAZs '']
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-public-subnet'
+
+  RouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-public-routes'
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref RouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  SubnetRouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnet
+      RouteTableId: !Ref RouteTable
+
+  # ==========================================
+  # Security Group
+  # ==========================================
+  FargateSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow inbound HTTP on port 8000 and outbound HTTPS
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8000
+          ToPort: 8000
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${EnvironmentName}-ecs-sg'
+
+  # ==========================================
+  # CloudWatch Logs
+  # ==========================================
+  ECSLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/easeprint
+      RetentionInDays: 7
+
+  # ==========================================
+  # IAM Roles
+  # ==========================================
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-execution-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  EasePrintTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub '${EnvironmentName}-task-role'
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: EasePrintApplicationPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Sid: DynamoDBAccess
+                Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:UpdateItem
+                  - dynamodb:DeleteItem
+                  - dynamodb:Scan
+                  - dynamodb:Query
+                  - dynamodb:DescribeTable
+                  - dynamodb:CreateTable
+                Resource: !Sub 'arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${DynamoDBTableName}'
+              - Sid: S3DocumentAccess
+                Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:PutObject
+                  - s3:DeleteObject
+                  - s3:ListBucket
+                Resource:
+                  - !Sub 'arn:aws:s3:::${S3BucketName}'
+                  - !Sub 'arn:aws:s3:::${S3BucketName}/*'
+              - Sid: BedrockInference
+                Effect: Allow
+                Action:
+                  - bedrock:InvokeModel
+                  - bedrock:InvokeModelWithResponseStream
+                Resource: '*'
+
+  # ==========================================
+  # ECS Cluster & Task Definition
+  # ==========================================
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${EnvironmentName}-cluster'
+
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${EnvironmentName}-task'
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '512'
+      Memory: '1024'
+      ExecutionRoleArn: !GetAtt ECSTaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt EasePrintTaskRole.Arn
+      ContainerDefinitions:
+        - Name: easeprint-api
+          Image: !Ref ContainerImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8000
+              HostPort: 8000
+              Protocol: tcp
+          Environment:
+            - Name: AWS_REGION
+              Value: !Ref AWS::Region
+            - Name: DYNAMODB_TABLE_NAME
+              Value: !Ref DynamoDBTableName
+            - Name: S3_BUCKET_NAME
+              Value: !Ref S3BucketName
+            - Name: BEDROCK_MODEL_ID
+              Value: !Ref BedrockModelId
+            - Name: BEDROCK_REGION
+              Value: !Ref AWS::Region
+            - Name: RAZORPAY_KEY_ID
+              Value: !Ref RazorpayKeyId
+            - Name: RAZORPAY_KEY_SECRET
+              Value: !Ref RazorpayKeySecret
+            - Name: N8N_BASE_URL
+              Value: !Ref N8nBaseUrl
+            - Name: N8N_INTAKE_URL
+              Value: !Ref N8nIntakeUrl
+            - Name: N8N_COMPLETION_URL
+              Value: !Ref N8nCompletionUrl
+            - Name: APP_ENV
+              Value: production
+          HealthCheck:
+            Command:
+              - CMD-SHELL
+              - 'curl -f http://localhost:8000/health || exit 1'
+            Interval: 30
+            Timeout: 5
+            Retries: 3
+            StartPeriod: 15
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref ECSLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ==========================================
+  # ECS Fargate Service
+  # ==========================================
+  ECSService:
+    Type: AWS::ECS::Service
+    DependsOn: SubnetRouteTableAssociation
+    Properties:
+      ServiceName: !Sub '${EnvironmentName}-service'
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      LaunchType: FARGATE
+      DesiredCount: 1
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets:
+            - !Ref PublicSubnet
+          SecurityGroups:
+            - !Ref FargateSecurityGroup
+
+Outputs:
+  ClusterName:
+    Description: Amazon ECS Cluster Name
+    Value: !Ref ECSCluster
+
+  ServiceName:
+    Description: Amazon ECS Service Name
+    Value: !Ref ECSService
+
+  TaskDefinitionArn:
+    Description: Task Definition ARN
+    Value: !Ref ECSTaskDefinition
+
+  LogGroupName:
+    Description: CloudWatch Log Group
+    Value: !Ref ECSLogGroup

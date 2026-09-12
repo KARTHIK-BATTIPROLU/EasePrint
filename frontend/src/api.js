@@ -126,13 +126,23 @@ export async function rejectJob(jobId, reason, staffNotes = "") {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ reason, staff_notes: staffNotes }),
   });
-  if (!res.ok) throw new Error("Failed to reject job");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to reject job (${res.status})`);
+  }
   return res.json();
+}
+
+export async function cancelJob(jobId, reason = "Cancelled by student") {
+  return rejectJob(jobId, reason);
 }
 
 export async function fetchEarningsAnalytics() {
   const res = await fetch(`${BASE_URL}/analytics/earnings`);
-  if (!res.ok) throw new Error("Failed to fetch earnings analytics");
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.detail || `Failed to fetch earnings (${res.status})`);
+  }
   return res.json();
 }
 
