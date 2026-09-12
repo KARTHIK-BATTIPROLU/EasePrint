@@ -19,6 +19,7 @@ import {
   Smartphone,
   Building,
   Check,
+  Zap,
 } from "lucide-react";
 import {
   calculatePrice,
@@ -129,16 +130,16 @@ export default function StudentPortal() {
   const [paymentModal, setPaymentModal] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [paymentTab, setPaymentTab] = useState("upi"); // "upi" | "cards" | "netbanking"
-  const [cardNumber, setCardNumber] = useState("");
-  const [cardExpiry, setCardExpiry] = useState("");
-  const [cardCvv, setCardCvv] = useState("");
-  const [cardName, setCardName] = useState("");
-  const [upiId, setUpiId] = useState("");
+  const [cardNumber, setCardNumber] = useState("4111 1111 1111 1111");
+  const [cardExpiry, setCardExpiry] = useState("12/28");
+  const [cardCvv, setCardCvv] = useState("789");
+  const [cardName, setCardName] = useState("Karthik Battiprolu");
+  const [upiId, setUpiId] = useState("student@okaxis");
   const [selectedUpiApp, setSelectedUpiApp] = useState("gpay");
   const [selectedBank, setSelectedBank] = useState("sbi");
   const [saveCardRbi, setSaveCardRbi] = useState(true);
 
-  // Submit Print Order with Razorpay Checkout
+  // Submit Print Order with Razorpay Checkout Modal
   const handleStartCheckout = async () => {
     if (!fileData) {
       alert("Please upload a document first.");
@@ -173,7 +174,25 @@ export default function StudentPortal() {
     }
   };
 
-  // Optional: Launch raw Razorpay popup if user explicitly desires external gateway iframe
+  // Instant 1-Click Trial Direct Payment without popup blockers
+  const handleQuickTrialPay = async () => {
+    if (!fileData) {
+      alert("Please upload a document first.");
+      return;
+    }
+    const amountInr = pricing?.total_amount_inr || 0;
+    if (amountInr <= 0) {
+      alert("Price estimate not ready.");
+      return;
+    }
+    setSubmitting(true);
+    const newJobId = "EP-" + Math.floor(100000 + Math.random() * 900000);
+    const testPaymentId = "pay_trial_" + Math.random().toString(36).substring(2, 11);
+    const testOrderId = "order_trial_" + Date.now();
+    await finalizeOrderWithPayment(newJobId, testPaymentId, testOrderId);
+  };
+
+  // Launch raw Razorpay popup with proper test mode options and failure recovery
   const handleOpenRawRazorpay = () => {
     if (!paymentModal || !window.Razorpay) {
       alert("Razorpay checkout SDK not available in this browser.");
@@ -184,18 +203,33 @@ export default function StudentPortal() {
       amount: Math.round(paymentModal.amountInr * 100),
       currency: "INR",
       name: "EasePrint Xerox Hub",
-      description: `Print Order (${pages} pgs, ${copies} copies)`,
-      order_id: paymentModal.orderId.startsWith("order_test_") ? undefined : paymentModal.orderId,
+      description: `Campus Print Order (${pages} pgs, ₹${paymentModal.amountInr})`,
+      order_id:
+        paymentModal.orderId && !paymentModal.orderId.startsWith("order_test_")
+          ? paymentModal.orderId
+          : undefined,
       image: "https://cdn-icons-png.flaticon.com/512/2874/2874808.png",
       handler: async function (resp) {
         await finalizeOrderWithPayment(paymentModal.jobId, resp.razorpay_payment_id, paymentModal.orderId);
       },
       prefill: {
-        name: studentName,
+        name: studentName || "Karthik Battiprolu",
         email: "student@campus.edu",
         contact: "8309112619",
       },
+      notes: {
+        platform: "EasePrint Campus Print Hub",
+        mode: "trial",
+      },
       theme: { color: "#0284c7" },
+      modal: {
+        ondismiss: function () {
+          console.log("Razorpay standard popup dismissed.");
+        },
+      },
+    });
+    rzp.on("payment.failed", function (response) {
+      console.warn("Razorpay payment cancelled or failed:", response.error);
     });
     rzp.open();
   };
@@ -521,6 +555,16 @@ export default function StudentPortal() {
               </span>
               <ArrowRight className="w-4 h-4" />
             </button>
+
+            <button
+              onClick={handleQuickTrialPay}
+              disabled={submitting || !fileData}
+              className="w-full mt-2.5 py-2.5 px-3 rounded-xl font-bold text-xs bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 flex items-center justify-center space-x-1.5 transition-all shadow-sm"
+              title="One-click test payment with instant sandbox approval"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400 animate-pulse" />
+              <span>⚡ One-Click Direct Trial Pay (Instant UPI / Auto-Confirm)</span>
+            </button>
           </div>
 
           {/* Active Job Tracker */}
@@ -721,8 +765,14 @@ export default function StudentPortal() {
                 {/* Header with Close */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
                   <div>
-                    <h4 className="font-extrabold text-sm text-slate-900">Payment Options</h4>
-                    <p className="text-[11px] text-slate-500">Select payment method & complete checkout</p>
+                    <div className="flex items-center space-x-2">
+                      <h4 className="font-extrabold text-sm text-slate-900">Payment Options</h4>
+                      <span className="text-[9px] bg-emerald-100 text-emerald-800 border border-emerald-300 font-extrabold px-2 py-0.5 rounded-full flex items-center space-x-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                        <span>TRIAL / TEST MODE</span>
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-slate-500">Auto-filled mock credentials — click confirm to pay instantly</p>
                   </div>
                   <button
                     onClick={() => setPaymentModal(null)}
@@ -951,21 +1001,22 @@ export default function StudentPortal() {
                   onClick={() =>
                     finalizeOrderWithPayment(
                       paymentModal.jobId,
-                      "pay_" + Math.random().toString(36).substring(2, 11),
+                      "pay_trial_" + Math.random().toString(36).substring(2, 11),
                       paymentModal.orderId
                     )
                   }
-                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-700 hover:from-sky-700 hover:to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-sky-600/25 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
+                  className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 via-sky-600 to-indigo-600 hover:from-emerald-500 hover:to-sky-500 text-white font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-sky-600/25 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <ShieldCheck className="w-5 h-5 text-emerald-300" />
-                  <span>Confirm & Pay ₹{paymentModal.amountInr.toFixed(2)}</span>
+                  <span>⚡ Direct Confirm & Pay ₹{paymentModal.amountInr.toFixed(2)} (Trial Mode)</span>
                 </button>
 
-                <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pt-1">
-                  <span>Secured by 256-bit encryption</span>
+                <div className="flex items-center justify-between text-[10px] text-slate-500 px-1 pt-1">
+                  <span>Pre-filled Razorpay Test Sandbox (rzp_test_TavfilameY1r04)</span>
                   <button
                     onClick={handleOpenRawRazorpay}
-                    className="text-sky-600 hover:underline font-semibold"
+                    className="text-sky-600 hover:underline font-bold"
+                    title="Opens native Razorpay popup (Test Card: 4111 1111 1111 1111)"
                   >
                     Open native Razorpay popup
                   </button>
