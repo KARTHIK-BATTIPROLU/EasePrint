@@ -2,12 +2,22 @@ import os
 import time
 from playwright.sync_api import sync_playwright
 
+os.environ["no_proxy"] = "*"
+os.environ["NO_PROXY"] = "*"
+os.environ.pop("http_proxy", None)
+os.environ.pop("HTTP_PROXY", None)
+os.environ.pop("https_proxy", None)
+os.environ.pop("HTTPS_PROXY", None)
+
 def capture_screenshots():
     output_dir = os.path.abspath("preview_screenshots")
     os.makedirs(output_dir, exist_ok=True)
     
     with sync_playwright() as p:
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True,
+            args=["--no-proxy-server", "--disable-web-security"]
+        )
         
         # 1. Desktop Standard Viewport (1440 x 900)
         page = browser.new_page(viewport={"width": 1440, "height": 900})

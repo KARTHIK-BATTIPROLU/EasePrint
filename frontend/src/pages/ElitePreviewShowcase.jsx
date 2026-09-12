@@ -71,17 +71,17 @@ export default function ElitePreviewShowcase({ onNavigateTab }) {
       {/* ========================================================================= */}
       <div className="sticky top-16 z-40 bg-gradient-to-r from-blue-700 via-sky-700 to-indigo-800 text-white shadow-md border-b border-blue-600/40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-wrap items-center justify-between gap-3 text-xs sm:text-sm">
-          <div className="flex items-center space-x-3">
-            <span className="flex h-2.5 w-2.5 relative">
+          <div className="flex items-center space-x-2.5">
+            <span className="flex h-2.5 w-2.5 relative flex-shrink-0">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-300 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-cyan-400"></span>
             </span>
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-extrabold tracking-wider bg-white/20 px-2 py-0.5 rounded text-[11px] sm:text-xs font-mono uppercase">
+            <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+              <span className="font-extrabold tracking-wider bg-white/20 px-2 py-0.5 rounded text-[10px] sm:text-xs font-mono uppercase">
                 EASEPRINT ELITE UI/UX PREVIEW — NOT YET MERGED
               </span>
-              <span className="text-blue-100 hidden md:inline">•</span>
-              <span className="text-blue-100 font-mono text-[11px]">
+              <span className="text-blue-200 hidden sm:inline">•</span>
+              <span className="text-blue-100 font-mono text-[10px] sm:text-[11px]">
                 branch: <strong className="text-white">design/easeprint-elite-preview</strong>
               </span>
             </div>
@@ -332,21 +332,22 @@ export default function ElitePreviewShowcase({ onNavigateTab }) {
                 <Xerox3DViewer />
 
                 {/* Floating Telemetry Overlay */}
-                <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-md p-3 rounded-xl border border-slate-200/80 shadow-card max-w-xs text-xs space-y-1.5">
+                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-md p-3.5 rounded-xl border border-slate-200/80 shadow-card max-w-xs sm:max-w-sm text-xs space-y-1.5 z-20">
                   <div className="font-bold text-slate-800 flex items-center justify-between">
                     <span>Optical Drum RPM</span>
-                    <span className="font-mono text-blue-600">3,600 RPM</span>
+                    <span className="font-mono text-blue-600 font-bold">3,600 RPM</span>
                   </div>
                   <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden">
                     <div className="bg-blue-600 h-full w-4/5 rounded-full"></div>
                   </div>
-                  <div className="text-[11px] text-slate-500 flex justify-between">
-                    <span>Laser Alignment: <strong className="text-emerald-600">Locked</strong></span>
-                    <span>Buffer: <strong className="text-slate-700 font-mono">120 PPM</strong></span>
+                  <div className="text-[11px] text-slate-500 flex justify-between items-center gap-4">
+                    <span>Laser Alignment: <strong className="text-emerald-600 font-bold">Locked</strong></span>
+                    <span>Buffer: <strong className="text-slate-700 font-mono font-bold">120 PPM</strong></span>
                   </div>
                 </div>
 
-                <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-card text-xs font-mono text-slate-600 flex items-center space-x-2">
+                {/* Relocated Photonic Renderer Badge to Bottom-Left to eliminate collision with 3D viewer tour controls */}
+                <div className="absolute bottom-4 left-4 bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-xl border border-slate-200/80 shadow-card text-[11px] font-mono text-slate-600 flex items-center space-x-2 z-20">
                   <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping"></span>
                   <span>Direct WebGL Photonic Renderer</span>
                 </div>
@@ -821,8 +822,8 @@ export default function ElitePreviewShowcase({ onNavigateTab }) {
 
               {/* Staff Queue Table */}
               <div className="bg-slate-50 rounded-2xl border border-slate-200 overflow-hidden shadow-xs">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
+                <div className="overflow-x-auto scrollbar-thin">
+                  <table className="w-full text-left text-xs min-w-[680px]">
                     <thead className="bg-slate-100 text-slate-700 font-bold uppercase tracking-wider border-b border-slate-200 text-[11px]">
                       <tr>
                         <th className="py-3 px-4">Ticket</th>
@@ -894,13 +895,13 @@ export default function ElitePreviewShowcase({ onNavigateTab }) {
                         </td>
                         <td className="py-3.5 px-4 font-mono">14 Pgs • Color • Staple</td>
                         <td className="py-3.5 px-4">
-                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
-                            <Clock className="w-3 h-3 text-blue-600" />
+                          <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-50 text-sky-800 border border-sky-200">
+                            <Clock className="w-3 h-3 text-sky-600" />
                             <span>Queued in Redis</span>
                           </span>
                         </td>
                         <td className="py-3.5 px-4 font-semibold text-slate-700">Counter 1</td>
-                        <td className="py-3.5 px-4 text-right space-x-2">
+                        <td className="py-3.5 px-4 text-right">
                           <button className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-[11px] shadow-xs cursor-pointer">
                             Prioritize
                           </button>
@@ -909,6 +910,9 @@ export default function ElitePreviewShowcase({ onNavigateTab }) {
 
                     </tbody>
                   </table>
+                </div>
+                <div className="px-4 py-2 bg-slate-100/80 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between sm:hidden font-mono">
+                  <span>← Swipe horizontally to view full queue actions →</span>
                 </div>
               </div>
             </div>
