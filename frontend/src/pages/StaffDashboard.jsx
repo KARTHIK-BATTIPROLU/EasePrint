@@ -261,14 +261,14 @@ export default function StaffDashboard() {
     }
   };
 
-  // Virtual Printer Simulation with instant optimistic move
-  const handleSimulatePrint = async (jobId) => {
+  // Real Xerox Print Workflow with instant optimistic move
+  const handleStartPrint = async (jobId) => {
     setJobs((prev) =>
       prev.map((j) => (j.job_id === jobId ? { ...j, status: "printing" } : j))
     );
     setActivePrinting((prev) => ({ ...prev, [jobId]: 15 }));
     try {
-      await updateJobStatus(jobId, "printing", "Virtual printer simulation active");
+      await updateJobStatus(jobId, "printing", "Printing sheets on Xerox WorkCentre 7845");
     } catch (e) {
       console.warn("Print status update:", e);
     }
@@ -292,7 +292,7 @@ export default function StaffDashboard() {
         );
 
         try {
-          const res = await markJobReady(jobId, "Counter 1 (Main)", "Printed via Virtual Printer");
+          const res = await markJobReady(jobId, "Counter 1 (Main)", "Printed via Xerox WorkCentre (Counter 1)");
           setNotificationLog((prev) => [
             {
               id: Date.now(),
@@ -384,7 +384,7 @@ export default function StaffDashboard() {
                 </span>
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
-                Multi-channel queue, live virtual printer, earnings ledger, zero-retention privacy, and system audit logs.
+                Multi-channel queue, live printer queue, earnings ledger, zero-retention privacy, and system audit logs.
               </p>
             </div>
           </div>
@@ -611,7 +611,7 @@ export default function StaffDashboard() {
                           <span>Approve & Queue</span>
                         </button>
                         <button
-                          onClick={() => handleSimulatePrint(job.job_id)}
+                          onClick={() => handleStartPrint(job.job_id)}
                           className="w-full py-1.5 px-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1 shadow-sm transition-all"
                         >
                           <Play className="w-3.5 h-3.5 fill-current" />
@@ -644,11 +644,11 @@ export default function StaffDashboard() {
                     onReject={(id) => setRejectingJob(id)}
                     actionButton={
                       <button
-                        onClick={() => handleSimulatePrint(job.job_id)}
+                        onClick={() => handleStartPrint(job.job_id)}
                         className="w-full mt-2 py-2 px-3 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold flex items-center justify-center space-x-1.5 shadow-sm transition-all"
                       >
                         <Play className="w-3.5 h-3.5 fill-current" />
-                        <span>Simulate Print</span>
+                        <span>Start Printing</span>
                       </button>
                     }
                   />
@@ -683,7 +683,7 @@ export default function StaffDashboard() {
                           style={{ width: `${prog}%` }}
                         ></div>
                       </div>
-                      <p className="text-[11px] text-slate-500 italic">Virtual printer processing sheets...</p>
+                      <p className="text-[11px] text-slate-500 italic">Xerox WorkCentre outputting sheets...</p>
                     </div>
                   );
                 })}

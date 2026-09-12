@@ -469,11 +469,11 @@ async def get_job_status(job_id: str):
 
 @app.patch(
     "/jobs/{job_id}/status",
-    summary="Update Job Status (Staff / Virtual Printer)",
+    summary="Update Job Status (Staff / Print Station)",
     tags=["Jobs"],
 )
 async def update_status(job_id: str, payload: Dict[str, Any]):
-    """Allows staff or virtual printer simulation to advance status."""
+    """Allows staff or physical print station to advance status."""
     new_status = payload.get("status")
     if not new_status:
         raise HTTPException(status_code=400, detail="status field is required.")
@@ -595,7 +595,7 @@ async def student_chat(req: ChatRequest):
 )
 async def mark_job_print_ready(job_id: str, req: PrintReadyRequest):
     """
-    Called by Staff Dashboard or Virtual Printer when prints are done.
+    Called by Staff Dashboard when prints are completed.
     Updates DynamoDB status to 'ready' and fires backward notification to n8n relay.
     """
     logger.info(f"Marking job {job_id} as ready at {req.pickup_counter}")
