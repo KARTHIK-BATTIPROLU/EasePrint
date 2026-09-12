@@ -738,7 +738,7 @@ export default function StudentPortal() {
                 </div>
 
                 {/* Using As Contact Pill */}
-                <div className="bg-black/20 backdrop-blur-sm rounded-xl p-3 border border-white/10 flex items-center space-x-2.5 text-xs text-white">
+                <div className="bg-white/15 backdrop-blur-sm rounded-xl p-3 border border-white/20 flex items-center space-x-2.5 text-xs text-white">
                   <div className="w-6 h-6 rounded-full bg-sky-400/30 flex items-center justify-center text-xs">
                     👤
                   </div>

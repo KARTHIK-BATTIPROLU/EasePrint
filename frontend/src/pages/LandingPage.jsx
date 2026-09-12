@@ -826,7 +826,7 @@ export default function LandingPage({ onSelectPortal }) {
 
             <button
               onClick={() => onSelectPortal("staff")}
-              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-slate-900/40 hover:bg-slate-900/60 text-white font-bold text-base border border-white/30 backdrop-blur-md flex items-center justify-center gap-2 transition-all hover:scale-105"
+              className="w-full sm:w-auto px-8 py-4 rounded-xl bg-indigo-950/30 hover:bg-indigo-950/45 text-white font-bold text-base border border-white/30 backdrop-blur-md flex items-center justify-center gap-2 transition-all hover:scale-105"
             >
               <Shield className="w-5 h-5 text-white" />
               <span>Open Staff Command Center</span>
