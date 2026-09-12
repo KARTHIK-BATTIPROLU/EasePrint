@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Play, Pause, RotateCw, Eye, Sparkles, Zap, Layers, Cpu } from "lucide-react";
+import { Play, Pause, Eye, Zap, Layers, Cpu } from "lucide-react";
 
 export default function Xerox3DViewer() {
   const mountRef = useRef(null);
@@ -32,29 +32,30 @@ export default function Xerox3DViewer() {
     const container = mountRef.current;
     if (!container) return;
 
-    const width = container.clientWidth || 550;
-    const height = container.clientHeight || 520;
+    const width = container.clientWidth || window.innerWidth;
+    const height = container.clientHeight || 750;
 
     // --- Scene Setup ---
     const scene = new THREE.Scene();
-    scene.background = null; // Completely transparent to blend into light background
+    scene.background = null;
 
-    // --- Camera Setup & Presets ---
-    const camera = new THREE.PerspectiveCamera(36, width / height, 0.1, 100);
-    const cameraPos = new THREE.Vector3(3.6, 2.9, 4.5);
-    const cameraTarget = new THREE.Vector3(0, 0.85, 0);
+    // --- Camera Setup with Plenty of Headroom & No Top Clipping ---
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+    const cameraPos = new THREE.Vector3(4.2, 3.4, 5.6);
+    const cameraTarget = new THREE.Vector3(0, 1.0, 0);
     camera.position.copy(cameraPos);
     camera.lookAt(cameraTarget);
 
+    // Ample vertical headroom so the top edge is never cut off
     const PRESETS = [
-      // 0: Overview
-      { pos: new THREE.Vector3(3.6, 2.9, 4.5), target: new THREE.Vector3(0, 0.85, 0) },
-      // 1: Scanner
-      { pos: new THREE.Vector3(0.0, 3.4, 2.0), target: new THREE.Vector3(0, 2.1, 0) },
-      // 2: Touch HUD
-      { pos: new THREE.Vector3(2.2, 2.8, 1.8), target: new THREE.Vector3(1.15, 2.45, 0.75) },
-      // 3: Paper Trays
-      { pos: new THREE.Vector3(1.8, 1.25, 2.9), target: new THREE.Vector3(0, 0.7, 0.4) },
+      // 0: Overview - Pulled back, full clearance from top to bottom
+      { pos: new THREE.Vector3(4.2, 3.4, 5.6), target: new THREE.Vector3(0, 1.0, 0) },
+      // 1: Scanner - Elevated look with full upper feeder in frame
+      { pos: new THREE.Vector3(0.0, 3.9, 3.2), target: new THREE.Vector3(0, 2.0, 0) },
+      // 2: Touch HUD - Focused on screen console with full headroom
+      { pos: new THREE.Vector3(2.6, 3.2, 2.8), target: new THREE.Vector3(1.15, 2.3, 0.75) },
+      // 3: Paper Trays - Focused on sliding cassettes and flowing sheets
+      { pos: new THREE.Vector3(2.4, 1.8, 4.2), target: new THREE.Vector3(0, 0.9, 0.4) },
     ];
 
     // --- Renderer Setup ---
@@ -65,21 +66,21 @@ export default function Xerox3DViewer() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // --- LIGHT COLOR PALETTE (Modern Architectural Platinum & Crisp White) ---
+    // --- LIGHT COLOR PALETTE (Architectural Platinum & Slate) ---
     const primaryWhiteMat = new THREE.MeshStandardMaterial({
-      color: 0xf8fafc, // Pure clean platinum white
+      color: 0xf8fafc,
       roughness: 0.25,
       metalness: 0.15,
     });
 
     const slateTrimMat = new THREE.MeshStandardMaterial({
-      color: 0x334155, // Elegant slate contrast
+      color: 0x334155,
       roughness: 0.35,
       metalness: 0.5,
     });
 
     const cobaltAccentMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7, // Vibrant Sky / Electric Blue
+      color: 0x0284c7,
       roughness: 0.2,
       metalness: 0.8,
     });
@@ -95,7 +96,7 @@ export default function Xerox3DViewer() {
     });
 
     const laserBeamMat = new THREE.MeshBasicMaterial({
-      color: 0x0284c7, // Cyan-Blue Laser Sweep
+      color: 0x0284c7,
       transparent: true,
       opacity: 0.95,
     });
@@ -121,9 +122,11 @@ export default function Xerox3DViewer() {
 
     // --- Machine Group ---
     const machineGroup = new THREE.Group();
+    // Slightly offset to right on widescreen so it frames behind content
+    machineGroup.position.set(0.6, -0.1, 0);
     scene.add(machineGroup);
 
-    // 1. Base Pedestal & Caster Feet
+    // 1. Base Pedestal
     const baseGeo = new THREE.BoxGeometry(2.0, 0.22, 1.8);
     const baseMesh = new THREE.Mesh(baseGeo, slateTrimMat);
     baseMesh.position.y = 0.11;
@@ -144,7 +147,7 @@ export default function Xerox3DViewer() {
       machineGroup.add(foot);
     });
 
-    // 2. Paper Cassettes Lower Unit (Crisp White with Slate Trays)
+    // 2. Paper Cassettes Lower Unit
     const lowerBodyGeo = new THREE.BoxGeometry(1.92, 1.0, 1.72);
     const lowerBody = new THREE.Mesh(lowerBodyGeo, primaryWhiteMat);
     lowerBody.position.y = 0.72;
@@ -152,20 +155,17 @@ export default function Xerox3DViewer() {
     lowerBody.receiveShadow = true;
     machineGroup.add(lowerBody);
 
-    // Paper Tray 1 & Tray 2 Front Panels
     for (let i = 0; i < 2; i++) {
       const trayFaceGeo = new THREE.BoxGeometry(1.8, 0.38, 0.04);
       const trayFace = new THREE.Mesh(trayFaceGeo, slateTrimMat);
       trayFace.position.set(0, 0.52 + i * 0.44, 0.87);
       machineGroup.add(trayFace);
 
-      // Metallic Handle
       const handleGeo = new THREE.BoxGeometry(0.48, 0.06, 0.06);
       const handle = new THREE.Mesh(handleGeo, cobaltAccentMat);
       handle.position.set(0, 0.52 + i * 0.44, 0.91);
       machineGroup.add(handle);
 
-      // Paper Level LED indicator
       const gaugeGeo = new THREE.BoxGeometry(0.18, 0.04, 0.02);
       const gaugeMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
       const gauge = new THREE.Mesh(gaugeGeo, gaugeMat);
@@ -180,26 +180,23 @@ export default function Xerox3DViewer() {
     midSection.castShadow = true;
     machineGroup.add(midSection);
 
-    // Electric Blue Accent Horizon Trim
     const trimGeo = new THREE.BoxGeometry(1.9, 0.04, 1.7);
     const trim = new THREE.Mesh(trimGeo, cobaltAccentMat);
     trim.position.y = 1.86;
     machineGroup.add(trim);
 
-    // 4. Scanner Bed Unit (Light Slate & Glass)
+    // 4. Scanner Bed Unit
     const scannerBedGeo = new THREE.BoxGeometry(2.1, 0.28, 1.9);
     const scannerBed = new THREE.Mesh(scannerBedGeo, primaryWhiteMat);
     scannerBed.position.y = 2.02;
     scannerBed.castShadow = true;
     machineGroup.add(scannerBed);
 
-    // Scanner Glass Flatbed
     const glassGeo = new THREE.BoxGeometry(1.7, 0.03, 1.3);
     const glassMesh = new THREE.Mesh(glassGeo, glassMat);
     glassMesh.position.set(0, 2.17, 0);
     machineGroup.add(glassMesh);
 
-    // Moving Laser Bar Sweep inside scanner
     const laserBarGeo = new THREE.BoxGeometry(0.14, 0.025, 1.26);
     const laserBar = new THREE.Mesh(laserBarGeo, laserBeamMat);
     laserBar.position.set(-0.6, 2.16, 0);
@@ -209,28 +206,26 @@ export default function Xerox3DViewer() {
     laserLight.position.set(-0.6, 2.22, 0);
     machineGroup.add(laserLight);
 
-    // 5. Automatic Document Feeder (ADF Top Lid)
+    // 5. Automatic Document Feeder (ADF)
     const adfBaseGeo = new THREE.BoxGeometry(1.86, 0.26, 1.5);
     const adfBase = new THREE.Mesh(adfBaseGeo, slateTrimMat);
     adfBase.position.set(-0.05, 2.32, 0);
     adfBase.castShadow = true;
     machineGroup.add(adfBase);
 
-    // Slanted Feeder Input Tray
     const adfInputGeo = new THREE.BoxGeometry(0.9, 0.04, 1.1);
     const adfInput = new THREE.Mesh(adfInputGeo, primaryWhiteMat);
     adfInput.position.set(-0.6, 2.52, 0);
     adfInput.rotation.z = Math.PI * 0.08;
     machineGroup.add(adfInput);
 
-    // Top paper stack
     const adfPaperGeo = new THREE.BoxGeometry(0.75, 0.05, 0.9);
     const adfPaper = new THREE.Mesh(adfPaperGeo, paperMat);
     adfPaper.position.set(-0.58, 2.57, 0);
     adfPaper.rotation.z = Math.PI * 0.08;
     machineGroup.add(adfPaper);
 
-    // 6. Interactive Touchscreen Console
+    // 6. Touchscreen Console
     const consoleArmGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.45, 16);
     const consoleArm = new THREE.Mesh(consoleArmGeo, slateTrimMat);
     consoleArm.position.set(1.0, 2.22, 0.7);
@@ -257,7 +252,7 @@ export default function Xerox3DViewer() {
     ledMesh.position.set(1.35, 2.65, 0.68);
     machineGroup.add(ledMesh);
 
-    // 7. Output Catch Tray with Gliding Paper Sheets
+    // 7. Output Tray with Gliding Paper
     const outputTrayGeo = new THREE.BoxGeometry(0.85, 0.03, 1.2);
     const outputTray = new THREE.Mesh(outputTrayGeo, slateTrimMat);
     outputTray.position.set(-1.25, 1.35, 0);
@@ -280,21 +275,20 @@ export default function Xerox3DViewer() {
     glidingPaper.position.set(-0.85, 1.48, 0);
     machineGroup.add(glidingPaper);
 
-    // 8. Ground Soft Contact Shadow (Clean Light Floor)
-    const groundGeo = new THREE.PlaneGeometry(8, 8);
-    const groundMat = new THREE.ShadowMaterial({ opacity: 0.18 });
+    // 8. Ground Shadow & Ring
+    const groundGeo = new THREE.PlaneGeometry(10, 10);
+    const groundMat = new THREE.ShadowMaterial({ opacity: 0.16 });
     const groundMesh = new THREE.Mesh(groundGeo, groundMat);
     groundMesh.rotation.x = -Math.PI / 2;
     groundMesh.position.y = 0;
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    // Soft Ambient Cyan Floor Halo
-    const ringGeo = new THREE.RingGeometry(1.5, 2.3, 48);
+    const ringGeo = new THREE.RingGeometry(1.6, 2.5, 48);
     const ringMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
       transparent: true,
-      opacity: 0.18,
+      opacity: 0.16,
       side: THREE.DoubleSide,
     });
     const ringMesh = new THREE.Mesh(ringGeo, ringMat);
@@ -302,7 +296,7 @@ export default function Xerox3DViewer() {
     ringMesh.position.y = 0.01;
     scene.add(ringMesh);
 
-    // --- Studio Lighting for Crisp Light Palette ---
+    // --- Studio Lighting ---
     const ambientLight = new THREE.AmbientLight(0xffffff, 2.2);
     scene.add(ambientLight);
 
@@ -314,40 +308,13 @@ export default function Xerox3DViewer() {
     keyLight.shadow.bias = -0.0005;
     scene.add(keyLight);
 
-    // Soft Sky Blue Rim Light
-    const skyRimLight = new THREE.DirectionalLight(0xbae6fd, 1.6);
+    const skyRimLight = new THREE.DirectionalLight(0xbae6fd, 1.8);
     skyRimLight.position.set(-5, 4, -4);
     scene.add(skyRimLight);
 
-    // Warm Front Soft Fill
     const fillLight = new THREE.DirectionalLight(0xf1f5f9, 1.4);
     fillLight.position.set(0, 4, 5);
     scene.add(fillLight);
-
-    // --- Mouse Drag Interaction ---
-    let isDragging = false;
-    let previousMousePosition = { x: 0, y: 0 };
-    let dragRotationY = 0;
-
-    const onPointerDown = (e) => {
-      isDragging = true;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-    };
-
-    const onPointerMove = (e) => {
-      if (!isDragging) return;
-      const deltaX = e.clientX - previousMousePosition.x;
-      dragRotationY += deltaX * 0.008;
-      previousMousePosition = { x: e.clientX, y: e.clientY };
-    };
-
-    const onPointerUp = () => {
-      isDragging = false;
-    };
-
-    container.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
 
     // --- Animation & Cinematic Tour Loop ---
     let clock = new THREE.Clock();
@@ -361,7 +328,7 @@ export default function Xerox3DViewer() {
       const elapsedTime = clock.getElapsedTime();
 
       // Cinematic Tour Sequencer
-      if (isTourPlayingRef.current && !isDragging) {
+      if (isTourPlayingRef.current) {
         stageTimeRef.current += delta;
         const currentStageDef = STAGES[activeStageRef.current];
         if (stageTimeRef.current >= currentStageDef.duration) {
@@ -371,28 +338,28 @@ export default function Xerox3DViewer() {
         }
       }
 
-      // Target Preset Camera & LookAt
+      // Smooth Camera & LookAt Interpolation towards Preset
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
-      camera.position.lerp(targetPreset.pos, 0.038);
-      currentLookAt.lerp(targetPreset.target, 0.038);
+      camera.position.lerp(targetPreset.pos, 0.035);
+      currentLookAt.lerp(targetPreset.target, 0.035);
       camera.lookAt(currentLookAt);
 
-      // Machine Subtle Float & User Drag Rotation
+      // Subtle Ambient Machine Rotation & Floating
       if (activeStageRef.current === 0) {
         machineGroup.position.y = Math.sin(elapsedTime * 1.5) * 0.03;
-        machineGroup.rotation.y = dragRotationY + Math.sin(elapsedTime * 0.5) * 0.05;
+        machineGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.08;
       } else {
         machineGroup.position.y = 0;
-        machineGroup.rotation.y = dragRotationY;
+        machineGroup.rotation.y = 0;
       }
 
-      // Scanner Laser Sweep Animation
+      // Scanner Laser Sweep
       const laserPos = Math.sin(elapsedTime * 2.8) * 0.65;
       laserBar.position.x = laserPos;
       laserLight.position.x = laserPos;
       laserLight.intensity = 2.4 + Math.sin(elapsedTime * 6.0) * 0.8;
 
-      // Gliding Paper Ejection Animation
+      // Gliding Paper Ejection
       const paperCycle = (elapsedTime * 0.7) % 1;
       const startX = -0.7;
       const endX = -1.25;
@@ -409,7 +376,6 @@ export default function Xerox3DViewer() {
         glidingPaper.scale.set(1, 1, 1);
       }
 
-      // Halo Pulse
       ringMesh.scale.setScalar(1.0 + Math.sin(elapsedTime * 2.0) * 0.04);
 
       renderer.render(scene, camera);
@@ -417,7 +383,6 @@ export default function Xerox3DViewer() {
 
     animate();
 
-    // --- Resize Handler ---
     const handleResize = () => {
       if (!container) return;
       const newWidth = container.clientWidth;
@@ -431,9 +396,6 @@ export default function Xerox3DViewer() {
 
     return () => {
       cancelAnimationFrame(animationFrameId);
-      container.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
       window.removeEventListener("resize", handleResize);
       if (renderer.domElement && container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -443,35 +405,26 @@ export default function Xerox3DViewer() {
   }, []);
 
   return (
-    <div className="relative w-full h-[480px] sm:h-[540px] lg:h-[600px] flex items-center justify-center select-none">
-      {/* Three.js Canvas - Pure Seamless Floating Model (No Enclosing Box) */}
+    <div className="relative w-full h-full flex items-center justify-center select-none overflow-hidden">
+      {/* Full-bleed Three.js Canvas */}
       <div
         ref={mountRef}
-        className="w-full h-full cursor-grab active:cursor-grabbing flex items-center justify-center"
+        className="w-full h-full flex items-center justify-center"
       />
 
-      {/* Top Floating Status Pill - Light Modern Glass */}
-      <div className="absolute top-2 left-2 sm:left-4 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl px-4 py-2 shadow-lg shadow-slate-200/50 flex items-center space-x-3 pointer-events-none z-10">
-        <span className="relative flex h-2.5 w-2.5">
+      {/* Floating Tour Stage Status Pill */}
+      <div className="absolute top-4 right-4 sm:right-8 bg-white/85 backdrop-blur-md border border-slate-200/80 rounded-2xl px-3.5 py-1.5 shadow-md shadow-slate-200/50 flex items-center space-x-2.5 pointer-events-none z-10">
+        <span className="relative flex h-2 w-2">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
-          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-sky-500"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500"></span>
         </span>
-        <div>
-          <div className="text-xs font-bold text-slate-900 tracking-wide flex items-center gap-1.5">
-            <span>EasePrint Smart Kiosk 3D</span>
-            <span className="bg-sky-50 text-sky-700 text-[10px] px-2 py-0.5 rounded-full font-mono font-semibold border border-sky-200">
-              ACTIVE
-            </span>
-          </div>
-          <p className="text-[11px] text-slate-500">
-            {STAGES[activeStageIndex].desc}
-          </p>
-        </div>
+        <span className="text-[11px] font-semibold text-slate-700">
+          3D Showcase • <strong className="text-sky-700 font-bold">{STAGES[activeStageIndex].label}</strong>
+        </span>
       </div>
 
-      {/* Bottom Cinematic Tour Navigation Bar (Light Palette) */}
-      <div className="absolute bottom-3 left-2 right-2 sm:left-auto sm:right-4 flex flex-col sm:flex-row items-center gap-2 bg-white/95 backdrop-blur-md border border-slate-200/80 rounded-2xl p-2 shadow-xl shadow-slate-200/60 z-10">
-        {/* Play/Pause Tour Toggle */}
+      {/* Bottom Cinematic Tour Controls */}
+      <div className="absolute bottom-4 right-4 sm:right-8 flex items-center gap-2 bg-white/90 backdrop-blur-md border border-slate-200/80 rounded-2xl p-1.5 shadow-lg shadow-slate-200/50 pointer-events-auto z-10">
         <button
           onClick={() => setIsTourPlaying(!isTourPlaying)}
           className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
@@ -479,14 +432,13 @@ export default function Xerox3DViewer() {
               ? "bg-sky-50 text-sky-700 border border-sky-200"
               : "bg-slate-100 text-slate-700 hover:bg-slate-200"
           }`}
-          title={isTourPlaying ? "Pause Cinematic Tour" : "Play Cinematic Tour"}
+          title={isTourPlaying ? "Pause Camera Tour" : "Play Camera Tour"}
         >
           {isTourPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-          <span>{isTourPlaying ? "Camera Tour" : "Paused"}</span>
+          <span className="hidden xs:inline">{isTourPlaying ? "Touring" : "Paused"}</span>
         </button>
 
-        {/* Stage Selector Pills */}
-        <div className="flex items-center bg-slate-100/90 p-1 rounded-xl">
+        <div className="flex items-center bg-slate-100/90 p-0.5 rounded-xl">
           {STAGES.map((s, idx) => {
             const Icon = s.icon;
             const isActive = activeStageIndex === idx;
@@ -494,14 +446,14 @@ export default function Xerox3DViewer() {
               <button
                 key={s.id}
                 onClick={() => selectStage(idx)}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex items-center space-x-1 px-2.5 py-1 rounded-lg text-xs font-semibold transition-all ${
                   isActive
-                    ? "bg-white text-sky-700 shadow-sm shadow-slate-300/50 scale-105"
-                    : "text-slate-600 hover:text-slate-900"
+                    ? "bg-white text-sky-700 shadow-sm shadow-slate-300/60"
+                    : "text-slate-500 hover:text-slate-900"
                 }`}
               >
-                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-sky-600" : "text-slate-400"}`} />
-                <span className="hidden xs:inline">{s.label}</span>
+                <Icon className={`w-3 h-3 ${isActive ? "text-sky-600" : "text-slate-400"}`} />
+                <span className="hidden sm:inline">{s.label}</span>
               </button>
             );
           })}

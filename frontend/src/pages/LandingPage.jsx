@@ -83,25 +83,30 @@ export default function LandingPage({ onSelectPortal }) {
   return (
     <div className="bg-white text-slate-800 min-h-screen selection:bg-sky-500 selection:text-white">
       {/* ========================================================================= */}
-      {/* 1. HERO SECTION & SEAMLESS 3D XEROX MACHINE                                */}
+      {/* 1. HERO SECTION WITH 3D XEROX MACHINE BEHIND TEXT (LIGHT & BLURRED)        */}
       {/* ========================================================================= */}
-      <section className="relative pt-6 pb-16 lg:pt-14 lg:pb-24 overflow-hidden border-b border-slate-200 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/50">
-        {/* Soft Ambient Radial Light Accents */}
-        <div className="absolute top-1/4 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-sky-100/60 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/3 right-10 w-[450px] h-[450px] bg-indigo-100/40 rounded-full blur-3xl pointer-events-none" />
+      <section className="relative min-h-[720px] lg:min-h-[780px] flex items-center justify-center pt-8 pb-16 lg:pt-14 lg:pb-20 overflow-hidden border-b border-slate-200 bg-gradient-to-b from-sky-50/40 via-white to-slate-50/50">
+        {/* Full-bleed 3D Background Layer: Behind all text, light & subtly blurred */}
+        <div className="absolute inset-0 w-full h-full overflow-hidden pointer-events-none z-0 opacity-45 filter blur-[1.5px] transition-all duration-700">
+          <Xerox3DViewer />
+        </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
-            {/* Left Column: Value Proposition, Dual Selector & Quick Estimator (7 cols) */}
+        {/* Soft atmospheric radial gradient to ensure foreground text is crisp */}
+        <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-transparent to-white/60 pointer-events-none z-[1]" />
+
+        {/* Foreground Content: Sitting crisply on top of the moving blurred 3D background */}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
+            {/* Left Column: Main Headline, Value Prop & Trust Badges (7 cols) */}
             <div className="lg:col-span-7 space-y-6 text-center lg:text-left">
               {/* Pill Badge */}
-              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-sky-50 border border-sky-200 text-xs font-semibold text-sky-700 shadow-sm">
+              <div className="inline-flex items-center space-x-2 px-3.5 py-1.5 rounded-full bg-white/90 backdrop-blur-md border border-sky-200 text-xs font-semibold text-sky-700 shadow-sm">
                 <Sparkles className="w-3.5 h-3.5 text-sky-600 animate-pulse" />
                 <span>Next-Gen Campus Print Ecosystem • AWS Bedrock AI</span>
               </div>
 
               {/* Main Headline */}
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.15] text-slate-900">
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight leading-[1.12] text-slate-900 drop-shadow-sm">
                 The Autonomous{" "}
                 <span className="bg-gradient-to-r from-sky-600 via-indigo-600 to-blue-700 bg-clip-text text-transparent">
                   Campus Print Cloud
@@ -115,60 +120,74 @@ export default function LandingPage({ onSelectPortal }) {
                 <strong className="text-sky-700 font-semibold">100% Zero-Retention shredded</strong> prints with zero wait.
               </p>
 
-              {/* DUAL PORTAL SWITCHER: THE TWO ENTRANCES */}
-              <div className="pt-2">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3 text-center lg:text-left">
-                  Choose Your Dashboard to Enter:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl mx-auto lg:mx-0">
-                  {/* Card 1: Student Portal */}
-                  <button
-                    onClick={() => onSelectPortal("student")}
-                    className="group relative text-left p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-sky-500 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-sky-100 hover:-translate-y-1"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
-                        <Printer className="w-5 h-5" />
-                      </div>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
-                        Student Access
-                      </span>
-                    </div>
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-sky-600 transition-colors flex items-center gap-1">
-                      Student Portal
-                      <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      Upload PDF, chat with Bedrock AI, get instant ₹ rates, pay via UPI, and track print progress.
-                    </p>
-                  </button>
+              {/* Trust Indicators */}
+              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-4 text-xs text-slate-600">
+                <span className="flex items-center gap-1.5 bg-white/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Zero USB Pen-Drive Virus
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Instant File Shredder (S3 Purge)
+                </span>
+                <span className="flex items-center gap-1.5 bg-white/85 backdrop-blur-sm px-3.5 py-1.5 rounded-full border border-slate-200/80 shadow-xs">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  Verified UPI & Razorpay
+                </span>
+              </div>
+            </div>
 
-                  {/* Card 2: Staff Command */}
-                  <button
-                    onClick={() => onSelectPortal("staff")}
-                    className="group relative text-left p-5 rounded-2xl bg-white border border-slate-200/90 hover:border-indigo-500 transition-all duration-300 shadow-sm hover:shadow-xl hover:shadow-indigo-100 hover:-translate-y-1"
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
-                        <Shield className="w-5 h-5" />
-                      </div>
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
-                        Staff & Operator
-                      </span>
+            {/* Right Column: High-Contrast Frosted Glass Foreground Cards (5 cols) */}
+            <div className="lg:col-span-5 space-y-4">
+              {/* Dual Portal Switcher Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-3.5">
+                {/* Student Portal Card */}
+                <button
+                  onClick={() => onSelectPortal("student")}
+                  className="group text-left p-4.5 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/90 hover:border-sky-500 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-sky-100 hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-sky-100 text-sky-700 flex items-center justify-center group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                      <Printer className="w-4.5 h-4.5" />
                     </div>
-                    <h3 className="text-lg font-bold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
-                      Staff Command
-                      <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
-                      Live Kanban print queue, auto-counter routing, custom pricing matrix, and 1-click cloud shredder.
-                    </p>
-                  </button>
-                </div>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                      Student Access
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-sky-600 transition-colors flex items-center gap-1">
+                    Student Portal
+                    <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Upload PDF, chat with Bedrock AI, get instant ₹ rates, pay via UPI, and track print progress.
+                  </p>
+                </button>
+
+                {/* Staff Command Card */}
+                <button
+                  onClick={() => onSelectPortal("staff")}
+                  className="group text-left p-4.5 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/90 hover:border-indigo-500 transition-all duration-300 shadow-md hover:shadow-xl hover:shadow-indigo-100 hover:-translate-y-0.5"
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-700 flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                      <Shield className="w-4.5 h-4.5" />
+                    </div>
+                    <span className="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-200">
+                      Staff & Operator
+                    </span>
+                  </div>
+                  <h3 className="text-base font-bold text-slate-900 group-hover:text-indigo-600 transition-colors flex items-center gap-1">
+                    Staff Command
+                    <ArrowRight className="w-4 h-4 opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
+                  </h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Live Kanban print queue, auto-counter routing, custom pricing matrix, and 1-click cloud shredder.
+                  </p>
+                </button>
               </div>
 
               {/* Quick Instant Price Calculator Card */}
-              <div className="p-4 rounded-2xl bg-white border border-slate-200/90 shadow-md shadow-slate-200/50 max-w-xl mx-auto lg:mx-0">
+              <div className="p-4 rounded-2xl bg-white/90 backdrop-blur-md border border-slate-200/90 shadow-md shadow-slate-200/50">
                 <div className="flex items-center justify-between mb-2.5">
                   <div className="flex items-center space-x-2 text-xs font-bold text-sky-700 uppercase tracking-wide">
                     <Sparkles className="w-3.5 h-3.5 text-sky-600" />
@@ -181,7 +200,7 @@ export default function LandingPage({ onSelectPortal }) {
 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 text-xs">
                   {/* Pages */}
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                  <div className="bg-slate-50/90 p-2 rounded-xl border border-slate-200/80">
                     <span className="text-[10px] text-slate-500 block mb-1">Pages</span>
                     <div className="flex items-center justify-between">
                       <button
@@ -201,7 +220,7 @@ export default function LandingPage({ onSelectPortal }) {
                   </div>
 
                   {/* Mode */}
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                  <div className="bg-slate-50/90 p-2 rounded-xl border border-slate-200/80">
                     <span className="text-[10px] text-slate-500 block mb-1">Mode</span>
                     <button
                       onClick={() => setQuickColor(quickColor === "bw" ? "color" : "bw")}
@@ -216,7 +235,7 @@ export default function LandingPage({ onSelectPortal }) {
                   </div>
 
                   {/* Sides */}
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                  <div className="bg-slate-50/90 p-2 rounded-xl border border-slate-200/80">
                     <span className="text-[10px] text-slate-500 block mb-1">Sides</span>
                     <button
                       onClick={() => setQuickSides(quickSides === "single" ? "double" : "single")}
@@ -227,7 +246,7 @@ export default function LandingPage({ onSelectPortal }) {
                   </div>
 
                   {/* Binding */}
-                  <div className="bg-slate-50 p-2 rounded-xl border border-slate-200/80">
+                  <div className="bg-slate-50/90 p-2 rounded-xl border border-slate-200/80">
                     <span className="text-[10px] text-slate-500 block mb-1">Binding</span>
                     <button
                       onClick={() =>
@@ -261,27 +280,6 @@ export default function LandingPage({ onSelectPortal }) {
                   </button>
                 </div>
               </div>
-
-              {/* Trust Indicators */}
-              <div className="pt-2 flex flex-wrap items-center justify-center lg:justify-start gap-y-2 gap-x-6 text-xs text-slate-500">
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Zero USB Pen-Drive Virus
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Instant File Shredder (S3 Purge)
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  Verified UPI & Razorpay
-                </span>
-              </div>
-            </div>
-
-            {/* Right Column: Seamless 3D Xerox Machine (Borderless & Floating) */}
-            <div className="lg:col-span-5 relative flex items-center justify-center">
-              <Xerox3DViewer />
             </div>
           </div>
         </div>
