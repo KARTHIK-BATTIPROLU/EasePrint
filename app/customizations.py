@@ -70,17 +70,15 @@ class CustomizationManager:
         self._init_dynamo()
 
     def _init_dynamo(self):
-        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
-            try:
-                self._dynamodb_resource = boto3.resource(
-                    "dynamodb",
-                    region_name=settings.AWS_REGION,
-                    aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
-                    aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
-                )
-                self._table = self._dynamodb_resource.Table(settings.DYNAMODB_TABLE_NAME)
-            except Exception as e:
-                logger.warning(f"Could not connect to DynamoDB for customizations: {e}")
+        try:
+            boto_kwargs: dict = {"region_name": settings.AWS_REGION}
+            if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY:
+                boto_kwargs["aws_access_key_id"] = settings.AWS_ACCESS_KEY_ID
+                boto_kwargs["aws_secret_access_key"] = settings.AWS_SECRET_ACCESS_KEY
+            self._dynamodb_resource = boto3.resource("dynamodb", **boto_kwargs)
+            self._table = self._dynamodb_resource.Table(settings.DYNAMODB_TABLE_NAME)
+        except Exception as e:
+            logger.warning(f"Could not connect to DynamoDB for customizations: {e}")
 
     async def get_customizations(self) -> StoreCustomizations:
         """Fetch current customizations from DynamoDB, falling back to local file or defaults."""

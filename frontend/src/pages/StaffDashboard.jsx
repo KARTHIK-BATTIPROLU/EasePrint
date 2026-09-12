@@ -642,13 +642,65 @@ export default function StaffDashboard() {
               </div>
 
               <div className="flex items-center space-x-2 shrink-0">
+                {/* MANUAL / AUTO TOGGLE — Direct one-click mode switch */}
+                <div className="flex items-center space-x-1.5 bg-white/10 border border-white/20 rounded-xl p-1">
+                  <button
+                    onClick={async () => {
+                      if (algoStatus?.enabled) return; // already auto
+                      try {
+                        const current = await fetch("/customizations").then(r => r.json());
+                        current.algorithm = { ...current.algorithm, enabled: true };
+                        current.last_updated = new Date().toISOString();
+                        await fetch("/customizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(current) });
+                        await loadAlgoStatus();
+                        await loadJobs();
+                      } catch (e) { alert("Toggle error: " + e.message); }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center space-x-1.5 ${
+                      algoStatus?.enabled
+                        ? "bg-emerald-500 text-white shadow-sm shadow-emerald-500/30"
+                        : "text-slate-300 hover:text-white hover:bg-white/10"
+                    }`}
+                    title="Enable Auto-Pilot: algorithm runs every 3 seconds"
+                  >
+                    <Zap className={`w-3 h-3 ${algoStatus?.enabled ? "fill-white" : ""}`} />
+                    <span>Auto</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      if (!algoStatus?.enabled) return; // already manual
+                      try {
+                        const current = await fetch("/customizations").then(r => r.json());
+                        current.algorithm = { ...current.algorithm, enabled: false };
+                        current.last_updated = new Date().toISOString();
+                        await fetch("/customizations", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(current) });
+                        await loadAlgoStatus();
+                      } catch (e) { alert("Toggle error: " + e.message); }
+                    }}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-black transition-all flex items-center space-x-1.5 ${
+                      !algoStatus?.enabled
+                        ? "bg-slate-500 text-white shadow-sm"
+                        : "text-slate-300 hover:text-white hover:bg-white/10"
+                    }`}
+                    title="Switch to Manual: staff controls each step"
+                  >
+                    <SlidersHorizontal className="w-3 h-3" />
+                    <span>Manual</span>
+                  </button>
+                </div>
+
                 <button
                   onClick={async () => {
                     try {
                       const res = await triggerAlgorithmProcessNext();
                       await loadJobs();
                       await loadAlgoStatus();
-                      alert(res.message || "Step processed successfully");
+                      if (res.action && res.action !== "idle" && res.action !== "disabled") {
+                        setNotificationLog((prev) => [
+                          { id: Date.now(), text: `Algorithm: ${res.action} → Job #${res.job_id || "?"} → ${res.status || res.message || ""}` },
+                          ...prev,
+                        ]);
+                      }
                     } catch (e) {
                       alert("Execution error: " + e.message);
                     }
@@ -672,6 +724,7 @@ export default function StaffDashboard() {
               </div>
             </div>
           )}
+
 
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4">
