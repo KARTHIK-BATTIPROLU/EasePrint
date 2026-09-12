@@ -1,4 +1,4 @@
-﻿import logging
+import logging
 from typing import Optional
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from arq.connections import RedisSettings
@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     # n8n Webhook Relay URLs
     N8N_CALLBACK_URL: str = "http://localhost:5678/webhook/print-clarifications"
     N8N_COMPLETION_URL: str = "http://localhost:5678/webhook/notify-student"
+
+    # Razorpay Payment Gateway (Test Mode)
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
 
     # Worker Concurrency & Debug
     MAX_JOBS: int = 10

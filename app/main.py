@@ -537,8 +537,8 @@ async def create_payment_order(req: CreateOrderRequest):
     If RAZORPAY_KEY_ID & RAZORPAY_KEY_SECRET exist in environment, calls the live Razorpay API.
     Otherwise provides an instantaneous test simulation order.
     """
-    key_id = os.getenv("RAZORPAY_KEY_ID")
-    key_secret = os.getenv("RAZORPAY_KEY_SECRET")
+    key_id = settings.RAZORPAY_KEY_ID or os.getenv("RAZORPAY_KEY_ID")
+    key_secret = settings.RAZORPAY_KEY_SECRET or os.getenv("RAZORPAY_KEY_SECRET")
     amount_paise = int(round(req.amount_inr * 100))
 
     if key_id and key_secret:

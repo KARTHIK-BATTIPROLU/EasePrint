@@ -40,15 +40,27 @@ export default function App() {
     return () => window.removeEventListener("popstate", onPopState);
   }, []);
 
+  const isDark = activeTab === "landing";
+
   return (
-    <div className="min-h-screen flex flex-col bg-slate-950 font-sans text-slate-100">
+    <div
+      className={`min-h-screen flex flex-col font-sans transition-colors duration-200 ${
+        isDark ? "bg-slate-950 text-slate-100" : "bg-slate-100 text-slate-900"
+      }`}
+    >
       <Navbar activeTab={activeTab} setActiveTab={handleTabChange} />
       <main className="flex-1">
         {activeTab === "landing" && <LandingPage onSelectPortal={handleTabChange} />}
         {activeTab === "student" && <StudentPortal />}
         {activeTab === "staff" && <StaffDashboard />}
       </main>
-      <footer className="bg-slate-950 border-t border-slate-800 py-6 text-center text-xs text-slate-500">
+      <footer
+        className={`py-6 text-center text-xs transition-colors duration-200 ${
+          isDark
+            ? "bg-slate-950 border-t border-slate-800 text-slate-500"
+            : "bg-white border-t border-slate-200 text-slate-500"
+        }`}
+      >
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>EasePrint © 2026 — Omnichannel Stationery & Print Station (Hyderabad, Telangana)</span>
           <span className="text-slate-400">Powered by Amazon Bedrock, DynamoDB, ElastiCache, S3 & ARQ</span>

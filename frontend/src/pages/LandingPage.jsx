@@ -34,6 +34,24 @@ export default function LandingPage({ onSelectPortal }) {
   const [selectedAudience, setSelectedAudience] = useState("students");
   const [openFaq, setOpenFaq] = useState(0);
 
+  // Quick Instant Estimator State
+  const [quickPages, setQuickPages] = useState(10);
+  const [quickColor, setQuickColor] = useState("bw");
+  const [quickSides, setQuickSides] = useState("double");
+  const [quickBinding, setQuickBinding] = useState("none");
+
+  const sheets = quickSides === "double" ? Math.ceil(quickPages / 2) : quickPages;
+  const ratePerSheet =
+    quickColor === "color"
+      ? quickSides === "double"
+        ? 18.0
+        : 10.0
+      : quickSides === "double"
+      ? 3.0
+      : 1.5;
+  const bindingCost = quickBinding === "spiral" ? 40.0 : quickBinding === "staple" ? 5.0 : 0.0;
+  const calcPrice = sheets * ratePerSheet + bindingCost;
+
   // Dynamic calculations for the interactive savings calculator
   const timeSavedMinutes = Math.round((monthlyPages / 5) * 4.5); // avg 4.5 mins saved per 5 pages
   const queuesAvoided = Math.round(monthlyPages / 15);
@@ -145,6 +163,101 @@ export default function LandingPage({ onSelectPortal }) {
                     <p className="text-xs text-slate-400 mt-1 line-clamp-2">
                       Live Kanban print queue, auto-counter routing, custom pricing matrix, and 1-click cloud shredder.
                     </p>
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Instant Price Calculator */}
+              <div className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 shadow-xl max-w-xl mx-auto lg:mx-0">
+                <div className="flex items-center justify-between mb-2.5">
+                  <div className="flex items-center space-x-2 text-xs font-bold text-cyan-400 uppercase tracking-wide">
+                    <Sparkles className="w-3.5 h-3.5 animate-pulse" />
+                    <span>Instant Rate Calculator</span>
+                  </div>
+                  <span className="text-[10px] bg-slate-900/90 border border-slate-700/70 px-2 py-0.5 rounded-full text-cyan-300 font-mono">
+                    Hyderabad Campus Rates
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3 text-xs">
+                  {/* Pages */}
+                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
+                    <span className="text-[10px] text-slate-400 block mb-1">Pages</span>
+                    <div className="flex items-center justify-between">
+                      <button
+                        onClick={() => setQuickPages(Math.max(1, quickPages - 5))}
+                        className="w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-bold"
+                      >
+                        -
+                      </button>
+                      <span className="font-bold font-mono text-white text-sm">{quickPages}</span>
+                      <button
+                        onClick={() => setQuickPages(quickPages + 5)}
+                        className="w-5 h-5 flex items-center justify-center bg-slate-800 hover:bg-slate-700 rounded text-slate-300 font-bold"
+                      >
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Mode */}
+                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
+                    <span className="text-[10px] text-slate-400 block mb-1">Mode</span>
+                    <button
+                      onClick={() => setQuickColor(quickColor === "bw" ? "color" : "bw")}
+                      className={`w-full py-0.5 px-1 rounded font-bold text-xs uppercase transition-colors ${
+                        quickColor === "color"
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                          : "bg-slate-800 text-slate-200"
+                      }`}
+                    >
+                      {quickColor === "color" ? "Color (₹10)" : "B&W (₹1.5)"}
+                    </button>
+                  </div>
+
+                  {/* Sides */}
+                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
+                    <span className="text-[10px] text-slate-400 block mb-1">Sides</span>
+                    <button
+                      onClick={() => setQuickSides(quickSides === "single" ? "double" : "single")}
+                      className="w-full py-0.5 px-1 rounded font-bold text-xs bg-slate-800 text-slate-200 capitalize transition-colors"
+                    >
+                      {quickSides}
+                    </button>
+                  </div>
+
+                  {/* Binding */}
+                  <div className="bg-slate-900/90 p-2 rounded-xl border border-slate-700/60">
+                    <span className="text-[10px] text-slate-400 block mb-1">Binding</span>
+                    <button
+                      onClick={() =>
+                        setQuickBinding(
+                          quickBinding === "none"
+                            ? "spiral"
+                            : quickBinding === "spiral"
+                            ? "staple"
+                            : "none"
+                        )
+                      }
+                      className="w-full py-0.5 px-1 rounded font-bold text-xs bg-slate-800 text-slate-200 capitalize truncate transition-colors"
+                    >
+                      {quickBinding}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Calculation Output & Direct Portal Launch */}
+                <div className="flex items-center justify-between pt-2 border-t border-slate-700/70">
+                  <div>
+                    <span className="text-[10px] text-slate-400 block leading-tight">Total Estimate:</span>
+                    <span className="text-xl font-black text-cyan-400 font-mono">₹{calcPrice.toFixed(2)}</span>
+                  </div>
+                  <button
+                    onClick={() => onSelectPortal("student")}
+                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-md shadow-cyan-500/20 transition-all hover:scale-105"
+                  >
+                    <span>Print in Student Portal</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
                   </button>
                 </div>
               </div>
