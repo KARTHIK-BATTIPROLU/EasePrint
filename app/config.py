@@ -40,6 +40,9 @@ class Settings(BaseSettings):
     N8N_CALLBACK_URL: str = "http://localhost:5678/webhook/print-clarifications"
     N8N_COMPLETION_URL: str = "http://localhost:5678/webhook/notify-student"
 
+    # Telegram Bot
+    TELEGRAM_BOT_TOKEN: Optional[str] = None
+
     # Razorpay Payment Gateway (Test Mode)
     RAZORPAY_KEY_ID: Optional[str] = None
     RAZORPAY_KEY_SECRET: Optional[str] = None

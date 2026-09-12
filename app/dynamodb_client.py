@@ -131,6 +131,9 @@ class DynamoDBClient:
                 _mock_dynamodb_store[job_id] = {"job_id": job_id}
             _mock_dynamodb_store[job_id].update(fields)
             logger.info(f"[Mock DynamoDB] Updated job {job_id} with fields: {fields}")
+        # Partition key cannot be updated in DynamoDB
+        sanitized_fields = {k: v for k, v in sanitized_fields.items() if k != self.pk_name}
+        if not sanitized_fields:
             return True
 
         update_expr_parts = []

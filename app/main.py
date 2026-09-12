@@ -219,23 +219,39 @@ async def upload_knowledge_file(file: UploadFile = File(...)):
     tags=["Uploads"],
 )
 async def upload_file(file: UploadFile = File(...)):
-    """Handles direct file upload from web student interface, saving and detecting page count."""
+    """Handles direct file upload from web student interface, uploading to AWS S3 and detecting page count."""
     safe_name = f"{int(datetime.datetime.now().timestamp())}_{file.filename}"
-    file_path = os.path.join("uploads", safe_name)
+    s3_key = f"jobs/web/{safe_name}"
 
     content = await file.read()
+    
+    # Save local copy for fallback
+    os.makedirs("uploads", exist_ok=True)
+    file_path = os.path.join("uploads", safe_name)
     with open(file_path, "wb") as f:
         f.write(content)
 
+    # Real AWS S3 Upload
+    s3_url = None
+    try:
+        content_type = file.content_type or "application/pdf"
+        s3_url = await s3_client.upload_file_bytes(content, s3_key, content_type=content_type)
+        logger.info(f"Uploaded file to real AWS S3: {s3_url}")
+    except Exception as exc:
+        logger.error(f"Error uploading to AWS S3: {exc}")
+
     pages = s3_client.extract_page_count_from_bytes(content)
+    effective_url = s3_url or f"/uploads/{safe_name}"
 
     audit_logger.log(
         "FILE_UPLOAD",
-        f"Document uploaded: '{file.filename}' ({pages} pages, {len(content)} bytes)",
+        f"Document uploaded to AWS S3: '{file.filename}' ({pages} pages, {len(content)} bytes)",
         channel="web",
         details={
             "file_name": file.filename,
             "saved_as": safe_name,
+            "s3_key": s3_key,
+            "s3_url": s3_url,
             "pages": pages,
             "size_bytes": len(content),
         },
@@ -244,7 +260,8 @@ async def upload_file(file: UploadFile = File(...)):
     return {
         "file_name": file.filename,
         "saved_as": safe_name,
-        "file_url": f"http://localhost:8000/uploads/{safe_name}",
+        "file_url": effective_url,
+        "s3_key": s3_key,
         "pages": pages,
         "size_bytes": len(content),
     }
@@ -265,13 +282,29 @@ async def enqueue_job(job: JobIn):
     logger.info(f"Received job submission for job_id={job.job_id} from {job.source_channel}")
     pool: Optional[ArqRedis] = getattr(app.state, "arq_pool", None)
     job_dict = job.model_dump()
+    # 1. Calculate price from specifications if missing or 0
+    if not job_dict.get("total_amount_inr") or float(job_dict.get("total_amount_inr") or 0) <= 0:
+        pg = int(job_dict.get("pages") or 1)
+        cp = int(job_dict.get("copies") or 1)
+        cm = job_dict.get("color_mode") or "bw"
+        sd = job_dict.get("sides") or "single"
+        bd = job_dict.get("binding") or "none"
+        try:
+            config = await customizations_manager.get_customizations()
+            pricing_calc = calculate_hyderabad_price(
+                pages=pg, copies=cp, color_mode=cm, sides=sd, binding=bd, custom_rates=config.pricing.model_dump()
+            )
+            job_dict["total_amount_inr"] = pricing_calc.total_amount_inr
+            job_dict["pricing_summary"] = pricing_calc.summary
+        except Exception:
+            job_dict["total_amount_inr"] = float(2.0 * pg * cp)
 
-    # 1. Immediately record in DynamoDB so staff and student see it right away!
+    # 2. Immediately record in DynamoDB so staff and student see it right away!
     dynamo = DynamoDBClient()
     job_dict["status"] = "queued"
     await dynamo.create_or_init_job(job_dict)
 
-    # 2. Update explicit requirements if provided
+    # 3. Update explicit requirements if provided
     update_fields = {}
     for k in ["pages", "copies", "color_mode", "sides", "binding", "paper_type", "total_amount_inr", "pricing_summary", "status"]:
         if job_dict.get(k) is not None:
@@ -424,6 +457,10 @@ async def get_job_status(job_id: str):
         requirements=requirements,
         pricing=record.get("pricing"),
         total_amount_inr=float(record["total_amount_inr"]) if record.get("total_amount_inr") is not None else None,
+        payment_status=record.get("payment_status", "unpaid"),
+        payment_id=record.get("payment_id"),
+        paid_at=record.get("paid_at"),
+        completed_at=record.get("completed_at"),
         notes=record.get("notes"),
         received_at=record.get("received_at"),
         raw_fields=record,
@@ -442,7 +479,36 @@ async def update_status(job_id: str, payload: Dict[str, Any]):
         raise HTTPException(status_code=400, detail="status field is required.")
 
     dynamo = DynamoDBClient()
-    success = await dynamo.update_job_status(job_id, new_status, notes=payload.get("notes"))
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    fields_to_update = {"status": new_status, "updated_at": now_iso}
+    if payload.get("notes"):
+        fields_to_update["notes"] = payload.get("notes")
+
+    # If completed (e.g. handed over to student), settle counter payment and calculate price if needed
+    if new_status == "completed":
+        fields_to_update["completed_at"] = now_iso
+        existing = await dynamo.get_record_by_job_id(job_id)
+        if existing:
+            if existing.get("payment_status") != "paid":
+                fields_to_update["payment_status"] = "paid"
+                fields_to_update["payment_id"] = "counter_cash"
+                fields_to_update["paid_at"] = now_iso
+
+            curr_amt = float(existing.get("total_amount_inr") or 0.0)
+            if curr_amt <= 0.0:
+                pg = int(existing.get("pages") or existing.get("requirements", {}).get("pages") or 1)
+                cp = int(existing.get("copies") or existing.get("requirements", {}).get("copies") or 1)
+                cm = existing.get("color_mode") or existing.get("requirements", {}).get("color_mode") or "bw"
+                sd = existing.get("sides") or existing.get("requirements", {}).get("sides") or "single"
+                bd = existing.get("binding") or existing.get("requirements", {}).get("binding") or "none"
+                try:
+                    price_calc = calculate_hyderabad_price(pages=pg, copies=cp, color_mode=cm, sides=sd, binding=bd)
+                    fields_to_update["total_amount_inr"] = price_calc.total_amount_inr
+                    fields_to_update["pricing_summary"] = price_calc.summary
+                except Exception:
+                    fields_to_update["total_amount_inr"] = float(2.0 * pg * cp)
+
+    success = await dynamo.update_job_fields(job_id, fields_to_update)
     if not success:
         raise HTTPException(status_code=404, detail="Failed to update job status.")
 
@@ -450,7 +516,7 @@ async def update_status(job_id: str, payload: Dict[str, Any]):
         "STATUS_CHANGE",
         f"Job {job_id} status updated to '{new_status}' ({payload.get('notes') or 'No notes'})",
         job_id=job_id,
-        details={"new_status": new_status, "notes": payload.get("notes")},
+        details={"new_status": new_status, "notes": payload.get("notes"), **fields_to_update},
     )
 
     invalidate_jobs_cache()
@@ -831,6 +897,23 @@ async def get_earnings_analytics():
         paid_at = item.get("paid_at") or ""
         completed_at = item.get("completed_at") or ""
 
+        # Pages & printing specs
+        pages = int(item.get("pages") or item.get("requirements", {}).get("pages") or 1)
+        copies = int(item.get("copies") or item.get("requirements", {}).get("copies") or 1)
+        color_mode = (item.get("color_mode") or item.get("requirements", {}).get("color_mode") or "bw").lower()
+        sides = item.get("sides") or item.get("requirements", {}).get("sides") or "single"
+        binding = item.get("binding") or item.get("requirements", {}).get("binding") or "none"
+        file_name = item.get("file_name") or "Document.pdf"
+        file_purged = item.get("file_purged", False) or (status_val in ["ready", "completed"])
+
+        # Auto-compute price if missing or 0
+        if amount <= 0.0:
+            try:
+                calc_val = calculate_hyderabad_price(pages=pages, copies=copies, color_mode=color_mode, sides=sides, binding=binding)
+                amount = calc_val.total_amount_inr
+            except Exception:
+                amount = float(2.0 * pages * copies)
+
         # Channels count
         if channel in channel_stats:
             channel_stats[channel]["count"] += 1
@@ -845,19 +928,20 @@ async def get_earnings_analytics():
         elif status_val == "rejected":
             rejected_orders += 1
 
-        # Revenue attribution
-        is_paid = (payment_status == "paid")
+        # Revenue attribution:
+        # Either paid online via Razorpay, OR completed & collected at the store counter
+        is_paid = (payment_status == "paid") or (status_val == "completed")
         if is_paid:
             total_revenue += amount
             if channel in channel_stats:
                 channel_stats[channel]["revenue"] += amount
 
-            # Check if paid or created today
-            date_check = (paid_at or created_at)[:10]
+            # Check if paid, completed, or created today
+            date_check = (paid_at or completed_at or created_at)[:10]
             if date_check == today_str:
                 today_revenue += amount
 
-            if payment_id:
+            if payment_id and "counter" not in str(payment_id).lower() and payment_id != "":
                 razorpay_count += 1
                 razorpay_amount += amount
             else:
@@ -865,15 +949,6 @@ async def get_earnings_analytics():
                 counter_amount += amount
         else:
             counter_count += 1
-
-        # Pages & printing specs
-        pages = int(item.get("pages") or item.get("requirements", {}).get("pages") or 1)
-        copies = int(item.get("copies") or item.get("requirements", {}).get("copies") or 1)
-        color_mode = (item.get("color_mode") or item.get("requirements", {}).get("color_mode") or "bw").lower()
-        sides = item.get("sides") or item.get("requirements", {}).get("sides") or "single"
-        binding = item.get("binding") or item.get("requirements", {}).get("binding") or "none"
-        file_name = item.get("file_name") or "Document.pdf"
-        file_purged = item.get("file_purged", False) or (status_val in ["ready", "completed"])
 
         sheets = pages * copies
         if sides == "double":
@@ -899,15 +974,17 @@ async def get_earnings_analytics():
             print_revenue += max(0.0, amount - b_rev)
 
         # Payment record row
+        display_payment_status = "paid" if is_paid else "unpaid"
+        display_payment_id = payment_id if payment_id else ("Counter Cash" if is_paid else "—")
         payment_records.append({
             "job_id": job_id,
             "customer_name": sender_name,
             "channel": channel,
             "amount_inr": amount,
-            "payment_status": payment_status,
-            "payment_id": payment_id or "—",
+            "payment_status": display_payment_status,
+            "payment_id": display_payment_id,
             "razorpay_order_id": razorpay_order_id or "—",
-            "paid_at": paid_at or "—",
+            "paid_at": paid_at or completed_at or "—",
             "created_at": created_at,
         })
 
@@ -974,6 +1051,139 @@ async def get_system_audit_logs(
     return {
         "total": len(logs),
         "logs": logs,
+    }
+
+
+@app.post("/webhook/telegram", summary="Direct Telegram Bot Webhook & Ingestion", tags=["Omnichannel"])
+async def telegram_webhook(payload: Dict[str, Any]):
+    """
+    Directly receives real Telegram Bot updates or normalized Telegram relay messages:
+    - Extracts sender, chat ID, message text / caption, file
+    - Downloads documents from Telegram Bot API and uploads directly to real AWS S3
+    - Calculates exact Hyderabad Xerox prices
+    - Persists the order to Amazon DynamoDB
+    - Dispatches to Bedrock agent and notifies Staff Dashboard
+    """
+    logger.info("Received Telegram webhook payload")
+    msg = payload.get("message") or payload.get("edited_message") or payload.get("channel_post") or payload
+    from_user = msg.get("from") or {}
+    chat = msg.get("chat") or {}
+
+    sender_id = str(chat.get("id") or from_user.get("id") or payload.get("sender_id") or "telegram_user")
+    first_name = from_user.get("first_name", "")
+    last_name = from_user.get("last_name", "")
+    sender_name = payload.get("sender_name") or f"{first_name} {last_name}".strip() or "Telegram Student"
+    message_text = msg.get("text") or msg.get("caption") or payload.get("message_text") or ""
+
+    now_epoch = int(time.time())
+    now_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
+    job_id = payload.get("job_id") or f"EP-TG-{now_epoch % 1000000}"
+
+    file_url = payload.get("file_url") or payload.get("file_s3_url")
+    file_name = payload.get("file_name")
+    pages = int(payload.get("pages") or 1)
+    s3_key = None
+
+    doc = msg.get("document")
+    if doc:
+        file_name = file_name or doc.get("file_name", "telegram_doc.pdf")
+        file_id = doc.get("file_id")
+        bot_token = settings.TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_BOT_TOKEN")
+        if bot_token and file_id:
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    file_info_res = await client.get(f"https://api.telegram.org/bot{bot_token}/getFile?file_id={file_id}")
+                    if file_info_res.status_code == 200:
+                        file_path = file_info_res.json().get("result", {}).get("file_path")
+                        if file_path:
+                            file_download_url = f"https://api.telegram.org/file/bot{bot_token}/{file_path}"
+                            doc_bytes_res = await client.get(file_download_url)
+                            if doc_bytes_res.status_code == 200:
+                                doc_bytes = doc_bytes_res.content
+                                s3_key = f"jobs/telegram/{sender_id}/{now_epoch}_{file_name}"
+                                s3_url = await s3_client.upload_file_bytes(doc_bytes, s3_key, content_type="application/pdf")
+                                file_url = s3_url
+                                pages = s3_client.extract_page_count_from_bytes(doc_bytes)
+                                logger.info(f"Downloaded Telegram doc and uploaded to real S3: {s3_url} ({pages} pages)")
+            except Exception as exc:
+                logger.warning(f"Failed to fetch Telegram document from Bot API: {exc}")
+
+    agent = get_bedrock_agent()
+    eval_result = await agent.process_job({
+        "job_id": job_id,
+        "source_channel": "telegram",
+        "sender_id": sender_id,
+        "sender_name": sender_name,
+        "message_text": message_text,
+        "file_url": file_url,
+        "file_name": file_name,
+        "pages": pages,
+    })
+
+    pricing_data = eval_result.get("pricing") or {}
+    total_amount = float(pricing_data.get("total_amount_inr") or 0.0)
+    if total_amount <= 0.0:
+        total_amount = float(2.0 * pages)
+
+    dynamo = DynamoDBClient()
+    job_record = {
+        "job_id": job_id,
+        "userID": job_id,
+        "status": "received" if eval_result.get("needs_clarification") else "queued",
+        "source_channel": "telegram",
+        "sender_id": sender_id,
+        "sender_name": sender_name,
+        "message_text": message_text,
+        "file_url": file_url or "",
+        "file_name": file_name or "telegram_document.pdf",
+        "pages": pages,
+        "copies": int(pricing_data.get("copies") or 1),
+        "color_mode": pricing_data.get("color_mode") or "bw",
+        "sides": pricing_data.get("sides") or "single",
+        "binding": pricing_data.get("binding") or "none",
+        "total_amount_inr": total_amount,
+        "pricing": pricing_data,
+        "pricing_summary": pricing_data.get("summary") or f"₹{total_amount:.2f}",
+        "payment_status": "unpaid",
+        "pickup_counter": "Counter 1",
+        "created_at": now_iso,
+        "updated_at": now_iso,
+        "notes": f"Order via Telegram: {message_text[:60]}",
+    }
+    if s3_key:
+        job_record["file_s3_key"] = s3_key
+
+    await dynamo.create_or_init_job(job_record)
+    await dynamo.update_job_fields(job_id, job_record)
+
+    audit_logger.log(
+        "ORDER_INTAKE",
+        f"Order {job_id} received from Telegram ({sender_name}) - ₹{total_amount:.2f}",
+        job_id=job_id,
+        channel="telegram",
+        details=job_record,
+    )
+
+    invalidate_jobs_cache()
+
+    bot_token = settings.TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_BOT_TOKEN")
+    if bot_token and sender_id and sender_id.isdigit():
+        reply_msg = eval_result.get("reply") or f"🎉 Received your print request (Order #{job_id})! Total: ₹{total_amount:.2f}. We'll notify you when ready for pickup."
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(
+                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                    json={"chat_id": int(sender_id), "text": reply_msg, "parse_mode": "Markdown"}
+                )
+        except Exception as exc:
+            logger.warning(f"Failed to post reply to Telegram: {exc}")
+
+    return {
+        "success": True,
+        "job_id": job_id,
+        "status": job_record["status"],
+        "total_amount_inr": total_amount,
+        "reply": eval_result.get("reply"),
     }
 
 

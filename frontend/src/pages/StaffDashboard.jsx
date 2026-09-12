@@ -312,12 +312,14 @@ export default function StaffDashboard() {
   // Manual Mark Completed with instant optimistic move
   const handleMarkCompleted = async (jobId) => {
     setJobs((prev) =>
-      prev.map((j) => (j.job_id === jobId ? { ...j, status: "completed" } : j))
+      prev.map((j) =>
+        j.job_id === jobId ? { ...j, status: "completed", payment_status: "paid" } : j
+      )
     );
     try {
       await updateJobStatus(jobId, "completed", "Order handed over to student");
-      loadJobs();
-      loadAnalytics();
+      await loadJobs();
+      await loadAnalytics();
     } catch (e) {
       console.error("Mark completed error:", e);
       loadJobs();

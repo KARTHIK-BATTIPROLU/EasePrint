@@ -150,6 +150,10 @@ class JobDetailResponse(BaseModel):
     requirements: Optional[Dict[str, Any]] = None
     pricing: Optional[Dict[str, Any]] = None
     total_amount_inr: Optional[float] = None
+    payment_status: Optional[str] = "unpaid"
+    payment_id: Optional[str] = None
+    paid_at: Optional[str] = None
+    completed_at: Optional[str] = None
     notes: Optional[str] = None
     received_at: Optional[str] = None
     raw_fields: Optional[Dict[str, Any]] = None

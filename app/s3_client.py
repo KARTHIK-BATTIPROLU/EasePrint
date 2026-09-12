@@ -31,6 +31,37 @@ class S3Client:
             self.s3 = None
             self.is_configured = False
 
+    async def upload_file_bytes(
+        self,
+        file_bytes: bytes,
+        s3_key: str,
+        content_type: str = "application/pdf",
+    ) -> Optional[str]:
+        """Upload in-memory file bytes directly to AWS S3 bucket and return presigned URL."""
+        if not self.is_configured or not self.s3:
+            logger.warning(f"S3 not configured; cannot upload {s3_key}")
+            return None
+
+        def _sync_upload():
+            try:
+                self.s3.put_object(
+                    Bucket=self.bucket,
+                    Key=s3_key,
+                    Body=file_bytes,
+                    ContentType=content_type,
+                )
+                logger.info(f"Successfully uploaded {len(file_bytes)} bytes to real S3: s3://{self.bucket}/{s3_key}")
+                return self.s3.generate_presigned_url(
+                    "get_object",
+                    Params={"Bucket": self.bucket, "Key": s3_key},
+                    ExpiresIn=604800,
+                )
+            except ClientError as exc:
+                logger.error(f"Failed to upload {s3_key} to S3: {exc}")
+                raise
+
+        return await asyncio.to_thread(_sync_upload)
+
     async def generate_presigned_download_url(self, s3_key: str, expiration_seconds: int = 3600) -> Optional[str]:
         """Generate a secure pre-signed download URL for staff or student view."""
         if not self.is_configured or not self.s3:
