@@ -3,6 +3,7 @@ import Navbar from "./components/Navbar";
 import LandingPage from "./pages/LandingPage";
 import StudentPortal from "./pages/StudentPortal";
 import StaffDashboard from "./pages/StaffDashboard";
+import ElitePreviewShowcase from "./pages/ElitePreviewShowcase";
 
 export default function App() {
   const getInitialTab = () => {
@@ -10,8 +11,11 @@ export default function App() {
       const path = window.location.pathname;
       if (path.includes("staff")) return "staff";
       if (path.includes("student")) return "student";
+      if (path.includes("landing")) return "landing";
+      if (path.includes("preview")) return "preview";
     }
-    return "landing";
+    // Default to preview showcase on the preview branch
+    return "preview";
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
@@ -19,7 +23,7 @@ export default function App() {
   const handleTabChange = (tab) => {
     setActiveTab(tab);
     if (typeof window !== "undefined") {
-      const targetPath = tab === "landing" ? "/" : `/${tab}`;
+      const targetPath = tab === "preview" ? "/preview" : (tab === "landing" ? "/" : `/${tab}`);
       window.history.pushState(null, "", targetPath);
       window.scrollTo({ top: 0, behavior: "smooth" });
     }
@@ -32,6 +36,8 @@ export default function App() {
         setActiveTab("staff");
       } else if (path.includes("student")) {
         setActiveTab("student");
+      } else if (path.includes("preview")) {
+        setActiveTab("preview");
       } else {
         setActiveTab("landing");
       }
@@ -44,6 +50,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col font-sans bg-slate-50 text-slate-900">
       <Navbar activeTab={activeTab} setActiveTab={handleTabChange} />
       <main className="flex-1">
+        {activeTab === "preview" && <ElitePreviewShowcase onNavigateTab={handleTabChange} />}
         {activeTab === "landing" && <LandingPage onSelectPortal={handleTabChange} />}
         {activeTab === "student" && <StudentPortal />}
         {activeTab === "staff" && <StaffDashboard />}
@@ -51,7 +58,9 @@ export default function App() {
       <footer className="py-6 text-center text-xs bg-white border-t border-slate-200 text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <span>EasePrint © 2026 — Omnichannel Stationery & Print Station (Hyderabad, Telangana)</span>
-          <span className="text-slate-400">Powered by Amazon Bedrock, DynamoDB, ElastiCache, S3 & ARQ</span>
+          <span className="text-slate-400 font-mono">
+            [BRANCH: design/easeprint-elite-preview • EASEPRINT ELITE UI/UX PREVIEW — NOT YET MERGED]
+          </span>
         </div>
       </footer>
     </div>
