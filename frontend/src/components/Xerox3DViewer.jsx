@@ -5,12 +5,12 @@ import { Play, Pause, Eye, Zap, Layers, Cpu } from "lucide-react";
 export default function Xerox3DViewer() {
   const mountRef = useRef(null);
 
-  // Cinematic Tour States
+  // Snappy Cinematic Tour States (Shortened durations for quick, energetic transitions)
   const STAGES = [
-    { id: "overview", label: "Overview", desc: "Heavy-Duty Autonomous Campus Kiosk", icon: Eye, duration: 5.5 },
-    { id: "scanner", label: "Optical Scanner", desc: "600 DPI Auto-Duplexing Glass Bed", icon: Zap, duration: 4.5 },
-    { id: "screen", label: "Touch HUD", desc: "EasePrint OS Live Dispatch Console", icon: Cpu, duration: 4.5 },
-    { id: "trays", label: "Paper Trays", desc: "Dual 1000-Sheet High-Speed Drawers", icon: Layers, duration: 4.5 },
+    { id: "overview", label: "Overview", desc: "Autonomous Enterprise Cloud Station", icon: Eye, duration: 3.5 },
+    { id: "photonics", label: "Laser Core", desc: "Visible Rotating Optical Imaging Drum", icon: Zap, duration: 3.0 },
+    { id: "screen", label: "Touch HUD", desc: "Articulated Curved OLED Dispatch Console", icon: Cpu, duration: 3.0 },
+    { id: "trays", label: "Paper Trays", desc: "Dual Motorized Cassettes with LED Gauges", icon: Layers, duration: 3.0 },
   ];
 
   const [activeStageIndex, setActiveStageIndex] = useState(0);
@@ -39,29 +39,29 @@ export default function Xerox3DViewer() {
     const scene = new THREE.Scene();
     scene.background = null;
 
-    // --- Responsive Placement: Small & moving on the right at top of page, grows as user scrolls ---
+    // --- Responsive Placement: Small on right at scroll 0, quickly enlarges & glides to middle on scroll ---
     const isMobile = width < 1024;
-    const machinePosX = isMobile ? 0 : 2.5;
+    const machinePosX = isMobile ? 0 : 2.4;
     const targetLookX = isMobile ? 0 : 0.6;
     const initialBaseScale = isMobile ? 0.38 : 0.36;
 
-    // --- Camera Setup with Wide Framing & Offset Target ---
+    // --- Camera Setup with Dynamic Perspective ---
     const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
     const cameraPos = new THREE.Vector3(isMobile ? 4.2 : 5.4, 3.4, 6.8);
     const cameraTarget = new THREE.Vector3(targetLookX, 0.9, 0);
     camera.position.copy(cameraPos);
     camera.lookAt(cameraTarget);
 
-    // Ample vertical headroom, pulled-back distances, machine framed on right
+    // Camera presets for the 4 interactive tour stages
     const PRESETS = [
-      // 0: Overview - Balanced wide 3/4 angle, entire machine kiosk framed gracefully
+      // 0: Overview - Balanced 3/4 angle showcasing the entire sleek kiosk
       { pos: new THREE.Vector3(isMobile ? 4.2 : 5.4, 3.4, 6.8), target: new THREE.Vector3(isMobile ? 0 : 1.3, 0.9, 0) },
-      // 1: Scanner - Distinct top-down angle showcasing the optical scanner & feeder
-      { pos: new THREE.Vector3(isMobile ? 0.0 : 2.4, 5.4, 4.4), target: new THREE.Vector3(isMobile ? 0 : 2.4, 1.8, 0) },
-      // 2: Touch HUD - Focused perspective on the live touchscreen console and glowing LED
-      { pos: new THREE.Vector3(isMobile ? 2.6 : 3.9, 3.2, 3.8), target: new THREE.Vector3(isMobile ? 1.15 : 2.9, 1.7, 0.6) },
-      // 3: Paper Trays - Low ground perspective showcasing the dual cassettes & gliding paper
-      { pos: new THREE.Vector3(isMobile ? 2.4 : 3.7, 1.8, 4.6), target: new THREE.Vector3(isMobile ? 0 : 1.9, 0.7, 0.3) },
+      // 1: Laser Core - Close-up on the internal photonics chamber & sweeping scanner
+      { pos: new THREE.Vector3(isMobile ? 0.0 : 2.2, 3.8, 4.2), target: new THREE.Vector3(isMobile ? 0 : 2.2, 1.5, 0) },
+      // 2: Touch HUD - Focused perspective on the articulated OLED console
+      { pos: new THREE.Vector3(isMobile ? 2.4 : 3.6, 2.9, 3.5), target: new THREE.Vector3(isMobile ? 1.0 : 2.6, 1.8, 0.6) },
+      // 3: Paper Trays - Low perspective showcasing the dual cassettes & gliding paper
+      { pos: new THREE.Vector3(isMobile ? 2.2 : 3.4, 1.6, 4.4), target: new THREE.Vector3(isMobile ? 0 : 1.8, 0.7, 0.3) },
     ];
 
     // --- Renderer Setup ---
@@ -72,10 +72,10 @@ export default function Xerox3DViewer() {
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     container.appendChild(renderer.domElement);
 
-    // --- LIGHT COLOR PALETTE (Architectural Platinum & Slate) ---
-    const primaryWhiteMat = new THREE.MeshStandardMaterial({
+    // --- HIGH-TECH CYBER-INDUSTRIAL MATERIALS PALETTE ---
+    const pearlWhiteMat = new THREE.MeshStandardMaterial({
       color: 0xf8fafc,
-      roughness: 0.25,
+      roughness: 0.2,
       metalness: 0.15,
     });
 
@@ -85,33 +85,49 @@ export default function Xerox3DViewer() {
       metalness: 0.35,
     });
 
-    const cobaltAccentMat = new THREE.MeshStandardMaterial({
-      color: 0x0284c7,
-      roughness: 0.2,
-      metalness: 0.8,
+    const darkChassisMat = new THREE.MeshStandardMaterial({
+      color: 0x1e293b,
+      roughness: 0.28,
+      metalness: 0.75,
     });
 
-    const glassMat = new THREE.MeshPhysicalMaterial({
-      color: 0xe0f2fe,
-      transmission: 0.8,
-      opacity: 0.9,
+    const cobaltAccentMat = new THREE.MeshStandardMaterial({
+      color: 0x0284c7,
+      roughness: 0.18,
+      metalness: 0.85,
+    });
+
+    const copperStatorMat = new THREE.MeshStandardMaterial({
+      color: 0xd97706,
+      roughness: 0.25,
+      metalness: 0.85,
+    });
+
+    const smokedGlassMat = new THREE.MeshPhysicalMaterial({
+      color: 0x38bdf8,
+      transmission: 0.85,
+      opacity: 0.88,
       transparent: true,
       roughness: 0.08,
-      ior: 1.5,
-      reflectivity: 0.95,
+      ior: 1.52,
+      reflectivity: 0.9,
+    });
+
+    const neonCyanGlowMat = new THREE.MeshBasicMaterial({
+      color: 0x38bdf8,
     });
 
     const laserBeamMat = new THREE.MeshBasicMaterial({
-      color: 0x0284c7,
+      color: 0x00f0ff,
       transparent: true,
       opacity: 0.95,
     });
 
     const screenMat = new THREE.MeshStandardMaterial({
-      color: 0x0f172a,
-      emissive: 0x0369a1,
-      emissiveIntensity: 0.65,
-      roughness: 0.2,
+      color: 0x0a101d,
+      emissive: 0x0284c7,
+      emissiveIntensity: 0.75,
+      roughness: 0.15,
     });
 
     const paperMat = new THREE.MeshStandardMaterial({
@@ -126,167 +142,253 @@ export default function Xerox3DViewer() {
       metalness: 0.05,
     });
 
-    // --- Machine Group ---
+    // --- Machine Root Group ---
     const machineGroup = new THREE.Group();
-    // Elevated in Hero right column at scroll 0, smoothly glides into middle and descends on scroll
     machineGroup.scale.set(initialBaseScale, initialBaseScale, initialBaseScale);
     machineGroup.position.set(machinePosX, isMobile ? 0.0 : 0.20, 0);
     scene.add(machineGroup);
 
-    // 1. Base Pedestal
-    const baseGeo = new THREE.BoxGeometry(2.0, 0.22, 1.8);
-    const baseMesh = new THREE.Mesh(baseGeo, slateTrimMat);
-    baseMesh.position.y = 0.11;
-    baseMesh.castShadow = true;
-    baseMesh.receiveShadow = true;
-    machineGroup.add(baseMesh);
+    // =========================================================================
+    // 1. BEVELED OCTAGONAL TITANIUM PEDESTAL & PERIMETER GLOW
+    // =========================================================================
+    const baseChassisGeo = new THREE.BoxGeometry(2.04, 0.20, 1.84);
+    const baseChassis = new THREE.Mesh(baseChassisGeo, darkChassisMat);
+    baseChassis.position.y = 0.10;
+    baseChassis.castShadow = true;
+    baseChassis.receiveShadow = true;
+    machineGroup.add(baseChassis);
 
-    const footGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.12, 16);
-    const footMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8, roughness: 0.3 });
+    // Glowing Neon Perimeter Line
+    const perimeterStripGeo = new THREE.BoxGeometry(2.08, 0.03, 1.88);
+    const perimeterStrip = new THREE.Mesh(perimeterStripGeo, neonCyanGlowMat);
+    perimeterStrip.position.y = 0.19;
+    machineGroup.add(perimeterStrip);
+
+    // 4 High-Tech Leveling Pods
+    const footGeo = new THREE.CylinderGeometry(0.09, 0.11, 0.12, 16);
+    const footMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.9, roughness: 0.2 });
     [
-      [-0.85, -0.75],
-      [0.85, -0.75],
-      [-0.85, 0.75],
-      [0.85, 0.75],
+      [-0.88, -0.78],
+      [0.88, -0.78],
+      [-0.88, 0.78],
+      [0.88, 0.78],
     ].forEach(([x, z]) => {
       const foot = new THREE.Mesh(footGeo, footMat);
       foot.position.set(x, 0.06, z);
       machineGroup.add(foot);
     });
 
-    // 2. Paper Cassettes Lower Unit
-    const lowerBodyGeo = new THREE.BoxGeometry(1.92, 1.0, 1.72);
-    const lowerBody = new THREE.Mesh(lowerBodyGeo, primaryWhiteMat);
-    lowerBody.position.y = 0.72;
+    // =========================================================================
+    // 2. DUAL HIGH-SPEED SMART CASSETTES (LOWER UNIT)
+    // =========================================================================
+    const lowerBodyGeo = new THREE.BoxGeometry(1.94, 0.96, 1.74);
+    const lowerBody = new THREE.Mesh(lowerBodyGeo, pearlWhiteMat);
+    lowerBody.position.y = 0.70;
     lowerBody.castShadow = true;
     lowerBody.receiveShadow = true;
     machineGroup.add(lowerBody);
 
+    // Side Aerodynamic Cooling Vents
+    [-0.98, 0.98].forEach((xSide) => {
+      for (let v = 0; v < 4; v++) {
+        const ventGeo = new THREE.BoxGeometry(0.02, 0.04, 0.75);
+        const vent = new THREE.Mesh(ventGeo, slateTrimMat);
+        vent.position.set(xSide, 0.45 + v * 0.14, 0);
+        machineGroup.add(vent);
+      }
+    });
+
+    // 2 Slide-Out Drawers with Recessed Handles & LED Reserves
     for (let i = 0; i < 2; i++) {
-      const trayFaceGeo = new THREE.BoxGeometry(1.8, 0.38, 0.04);
+      const trayFaceGeo = new THREE.BoxGeometry(1.82, 0.36, 0.04);
       const trayFace = new THREE.Mesh(trayFaceGeo, slateTrimMat);
-      trayFace.position.set(0, 0.52 + i * 0.44, 0.87);
+      trayFace.position.set(0, 0.50 + i * 0.42, 0.88);
       machineGroup.add(trayFace);
 
-      const handleGeo = new THREE.BoxGeometry(0.48, 0.06, 0.06);
+      // Recessed Anodized Cobalt Handle
+      const handleGeo = new THREE.BoxGeometry(0.50, 0.05, 0.06);
       const handle = new THREE.Mesh(handleGeo, cobaltAccentMat);
-      handle.position.set(0, 0.52 + i * 0.44, 0.91);
+      handle.position.set(0, 0.50 + i * 0.42, 0.92);
       machineGroup.add(handle);
 
-      const gaugeGeo = new THREE.BoxGeometry(0.18, 0.04, 0.02);
-      const gaugeMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
+      // Glowing Capacity Gauge
+      const gaugeGeo = new THREE.BoxGeometry(0.20, 0.035, 0.02);
+      const gaugeMat = new THREE.MeshBasicMaterial({ color: i === 0 ? 0x10b981 : 0x06b6d4 });
       const gauge = new THREE.Mesh(gaugeGeo, gaugeMat);
-      gauge.position.set(0.65, 0.52 + i * 0.44, 0.9);
+      gauge.position.set(0.68, 0.50 + i * 0.42, 0.91);
       machineGroup.add(gauge);
     }
 
-    // 3. Central Print Engine Unit
-    const midSectionGeo = new THREE.BoxGeometry(1.86, 0.65, 1.66);
-    const midSection = new THREE.Mesh(midSectionGeo, primaryWhiteMat);
-    midSection.position.y = 1.54;
+    // =========================================================================
+    // 3. TRANSPARENT SMOKED-GLASS PHOTONICS CHAMBER & ROTATING LASER DRUM
+    // =========================================================================
+    const midSectionGeo = new THREE.BoxGeometry(1.88, 0.58, 1.68);
+    const midSection = new THREE.Mesh(midSectionGeo, pearlWhiteMat);
+    midSection.position.y = 1.48;
     midSection.castShadow = true;
     machineGroup.add(midSection);
 
-    const trimGeo = new THREE.BoxGeometry(1.9, 0.04, 1.7);
-    const trim = new THREE.Mesh(trimGeo, cobaltAccentMat);
-    trim.position.y = 1.86;
-    machineGroup.add(trim);
+    // Front Smoked-Glass Observation Viewport
+    const observationGlassGeo = new THREE.BoxGeometry(1.68, 0.38, 0.06);
+    const observationGlass = new THREE.Mesh(observationGlassGeo, smokedGlassMat);
+    observationGlass.position.set(0, 1.48, 0.86);
+    machineGroup.add(observationGlass);
 
-    // 4. Scanner Bed Unit
-    const scannerBedGeo = new THREE.BoxGeometry(2.1, 0.28, 1.9);
-    const scannerBed = new THREE.Mesh(scannerBedGeo, primaryWhiteMat);
-    scannerBed.position.y = 2.02;
+    // Inside Chamber: Rotating Laser Imaging Drum (Visible through glass!)
+    const drumGroup = new THREE.Group();
+    drumGroup.position.set(0, 1.48, 0.45);
+    machineGroup.add(drumGroup);
+
+    const drumGeo = new THREE.CylinderGeometry(0.22, 0.22, 1.35, 24);
+    const drumMat = new THREE.MeshStandardMaterial({
+      color: 0x94a3b8,
+      roughness: 0.2,
+      metalness: 0.9,
+    });
+    const drumMesh = new THREE.Mesh(drumGeo, drumMat);
+    drumMesh.rotation.z = Math.PI / 2;
+    drumGroup.add(drumMesh);
+
+    // Copper Stator Bands on Drum
+    [-0.45, 0, 0.45].forEach((xOffset) => {
+      const ringGeo = new THREE.TorusGeometry(0.23, 0.02, 16, 24);
+      const ring = new THREE.Mesh(ringGeo, copperStatorMat);
+      ring.position.x = xOffset;
+      ring.rotation.y = Math.PI / 2;
+      drumGroup.add(ring);
+    });
+
+    // Internal Glowing Core Light
+    const internalCoreLight = new THREE.PointLight(0x00f0ff, 2.2, 1.8);
+    internalCoreLight.position.set(0, 1.48, 0.6);
+    machineGroup.add(internalCoreLight);
+
+    // Accent Rim Dividing Lower and Upper Units
+    const accentRimGeo = new THREE.BoxGeometry(1.92, 0.04, 1.72);
+    const accentRim = new THREE.Mesh(accentRimGeo, cobaltAccentMat);
+    accentRim.position.y = 1.78;
+    machineGroup.add(accentRim);
+
+    // =========================================================================
+    // 4. SCANNER BED & ACTIVE VOLUMETRIC LASER ARRAY
+    // =========================================================================
+    const scannerBedGeo = new THREE.BoxGeometry(2.14, 0.26, 1.94);
+    const scannerBed = new THREE.Mesh(scannerBedGeo, pearlWhiteMat);
+    scannerBed.position.y = 1.94;
     scannerBed.castShadow = true;
     machineGroup.add(scannerBed);
 
-    const glassGeo = new THREE.BoxGeometry(1.7, 0.03, 1.3);
-    const glassMesh = new THREE.Mesh(glassGeo, glassMat);
-    glassMesh.position.set(0, 2.17, 0);
-    machineGroup.add(glassMesh);
+    const glassPlatenGeo = new THREE.BoxGeometry(1.74, 0.025, 1.34);
+    const glassPlaten = new THREE.Mesh(glassPlatenGeo, smokedGlassMat);
+    glassPlaten.position.set(0, 2.08, 0);
+    machineGroup.add(glassPlaten);
 
-    const laserBarGeo = new THREE.BoxGeometry(0.14, 0.025, 1.26);
+    // Animated Sweeping Laser Bar
+    const laserBarGeo = new THREE.BoxGeometry(0.12, 0.02, 1.30);
     const laserBar = new THREE.Mesh(laserBarGeo, laserBeamMat);
-    laserBar.position.set(-0.6, 2.16, 0);
+    laserBar.position.set(-0.6, 2.07, 0);
     machineGroup.add(laserBar);
 
-    const laserLight = new THREE.PointLight(0x0284c7, 3.2, 2.0);
-    laserLight.position.set(-0.6, 2.22, 0);
+    const laserLight = new THREE.PointLight(0x0284c7, 3.5, 2.2);
+    laserLight.position.set(-0.6, 2.14, 0);
     machineGroup.add(laserLight);
 
-    // 5. Automatic Document Feeder (ADF)
-    const adfBaseGeo = new THREE.BoxGeometry(1.86, 0.26, 1.5);
-    const adfBase = new THREE.Mesh(adfBaseGeo, slateTrimMat);
-    adfBase.position.set(-0.05, 2.32, 0);
+    // =========================================================================
+    // 5. AERODYNAMIC AUTO-DOCUMENT FEEDER (ADF) CANOPY
+    // =========================================================================
+    const adfBaseGeo = new THREE.BoxGeometry(1.90, 0.24, 1.54);
+    const adfBase = new THREE.Mesh(adfBaseGeo, darkChassisMat);
+    adfBase.position.set(-0.04, 2.24, 0);
     adfBase.castShadow = true;
     machineGroup.add(adfBase);
 
-    const adfInputGeo = new THREE.BoxGeometry(0.9, 0.04, 1.1);
-    const adfInput = new THREE.Mesh(adfInputGeo, primaryWhiteMat);
-    adfInput.position.set(-0.6, 2.52, 0);
-    adfInput.rotation.z = Math.PI * 0.08;
-    machineGroup.add(adfInput);
+    const adfIntakeGeo = new THREE.BoxGeometry(0.92, 0.04, 1.12);
+    const adfIntake = new THREE.Mesh(adfIntakeGeo, pearlWhiteMat);
+    adfIntake.position.set(-0.58, 2.44, 0);
+    adfIntake.rotation.z = Math.PI * 0.08;
+    machineGroup.add(adfIntake);
 
-    const adfPaperGeo = new THREE.BoxGeometry(0.75, 0.05, 0.9);
+    const adfPaperGeo = new THREE.BoxGeometry(0.76, 0.04, 0.92);
     const adfPaper = new THREE.Mesh(adfPaperGeo, paperMat);
-    adfPaper.position.set(-0.58, 2.57, 0);
+    adfPaper.position.set(-0.56, 2.48, 0);
     adfPaper.rotation.z = Math.PI * 0.08;
     machineGroup.add(adfPaper);
 
-    // 6. Touchscreen Console
-    const consoleArmGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.45, 16);
-    const consoleArm = new THREE.Mesh(consoleArmGeo, slateTrimMat);
-    consoleArm.position.set(1.0, 2.22, 0.7);
-    consoleArm.rotation.z = -Math.PI * 0.15;
-    machineGroup.add(consoleArm);
+    // =========================================================================
+    // 6. ARTICULATED ROBOTIC BOOM & CURVED HOLOGRAPHIC OLED CONSOLE
+    // =========================================================================
+    const boomJoint1Geo = new THREE.CylinderGeometry(0.045, 0.045, 0.48, 16);
+    const boomJoint1 = new THREE.Mesh(boomJoint1Geo, darkChassisMat);
+    boomJoint1.position.set(1.02, 2.15, 0.72);
+    boomJoint1.rotation.z = -Math.PI * 0.16;
+    machineGroup.add(boomJoint1);
 
-    const screenHolderGeo = new THREE.BoxGeometry(0.75, 0.52, 0.08);
-    const screenHolder = new THREE.Mesh(screenHolderGeo, slateTrimMat);
-    screenHolder.position.set(1.15, 2.42, 0.75);
-    screenHolder.rotation.y = -Math.PI * 0.22;
-    screenHolder.rotation.x = -Math.PI * 0.12;
+    const boomKnuckleGeo = new THREE.SphereGeometry(0.06, 16, 16);
+    const boomKnuckle = new THREE.Mesh(boomKnuckleGeo, cobaltAccentMat);
+    boomKnuckle.position.set(1.16, 2.36, 0.76);
+    machineGroup.add(boomKnuckle);
+
+    const screenHolderGeo = new THREE.BoxGeometry(0.78, 0.54, 0.07);
+    const screenHolder = new THREE.Mesh(screenHolderGeo, darkChassisMat);
+    screenHolder.position.set(1.22, 2.46, 0.82);
+    screenHolder.rotation.y = -Math.PI * 0.24;
+    screenHolder.rotation.x = -Math.PI * 0.10;
     machineGroup.add(screenHolder);
 
-    const screenDisplayGeo = new THREE.BoxGeometry(0.68, 0.44, 0.02);
+    // Glowing Bezel Rim
+    const bezelGeo = new THREE.BoxGeometry(0.80, 0.56, 0.02);
+    const bezel = new THREE.Mesh(bezelGeo, cobaltAccentMat);
+    bezel.position.set(1.22, 2.46, 0.81);
+    bezel.rotation.y = -Math.PI * 0.24;
+    bezel.rotation.x = -Math.PI * 0.10;
+    machineGroup.add(bezel);
+
+    const screenDisplayGeo = new THREE.BoxGeometry(0.72, 0.46, 0.02);
     const screenDisplay = new THREE.Mesh(screenDisplayGeo, screenMat);
-    screenDisplay.position.set(1.15, 2.42, 0.8);
-    screenDisplay.rotation.y = -Math.PI * 0.22;
-    screenDisplay.rotation.x = -Math.PI * 0.12;
+    screenDisplay.position.set(1.22, 2.46, 0.86);
+    screenDisplay.rotation.y = -Math.PI * 0.24;
+    screenDisplay.rotation.x = -Math.PI * 0.10;
     machineGroup.add(screenDisplay);
 
     const ledIndicatorGeo = new THREE.SphereGeometry(0.035, 16, 16);
     const ledMat = new THREE.MeshBasicMaterial({ color: 0x10b981 });
     const ledMesh = new THREE.Mesh(ledIndicatorGeo, ledMat);
-    ledMesh.position.set(1.35, 2.65, 0.68);
+    ledMesh.position.set(1.42, 2.70, 0.76);
     machineGroup.add(ledMesh);
 
-    // 7. Output Tray with Gliding Paper
-    const outputTrayGeo = new THREE.BoxGeometry(0.85, 0.03, 1.2);
-    const outputTray = new THREE.Mesh(outputTrayGeo, slateTrimMat);
-    outputTray.position.set(-1.25, 1.35, 0);
+    const hudLedLight = new THREE.PointLight(0x38bdf8, 1.8, 1.6);
+    hudLedLight.position.set(1.22, 2.10, 0.84);
+    machineGroup.add(hudLedLight);
+
+    // =========================================================================
+    // 7. ACTIVE SMART OUTPUT CHUTE & GLIDING DOCUMENT
+    // =========================================================================
+    const outputTrayGeo = new THREE.BoxGeometry(0.88, 0.035, 1.24);
+    const outputTray = new THREE.Mesh(outputTrayGeo, darkChassisMat);
+    outputTray.position.set(-1.26, 1.32, 0);
     outputTray.rotation.z = -Math.PI * 0.07;
     machineGroup.add(outputTray);
 
-    const outputRimGeo = new THREE.BoxGeometry(0.04, 0.12, 1.2);
+    const outputRimGeo = new THREE.BoxGeometry(0.04, 0.14, 1.24);
     const outputRim = new THREE.Mesh(outputRimGeo, cobaltAccentMat);
-    outputRim.position.set(-1.65, 1.45, 0);
+    outputRim.position.set(-1.68, 1.42, 0);
     machineGroup.add(outputRim);
 
-    const stackedPaperGeo = new THREE.BoxGeometry(0.7, 0.06, 0.95);
+    const stackedPaperGeo = new THREE.BoxGeometry(0.72, 0.06, 0.98);
     const stackedPaper = new THREE.Mesh(stackedPaperGeo, paperPrintedMat);
-    stackedPaper.position.set(-1.23, 1.39, 0);
+    stackedPaper.position.set(-1.24, 1.36, 0);
     stackedPaper.rotation.z = -Math.PI * 0.07;
     machineGroup.add(stackedPaper);
 
-    const glidingPaperGeo = new THREE.BoxGeometry(0.65, 0.008, 0.9);
+    const glidingPaperGeo = new THREE.BoxGeometry(0.66, 0.008, 0.92);
     const glidingPaper = new THREE.Mesh(glidingPaperGeo, paperMat);
-    glidingPaper.position.set(-0.7, 1.54, 0.1);
+    glidingPaper.position.set(-0.7, 1.52, 0.1);
     machineGroup.add(glidingPaper);
-    const hudLed = new THREE.PointLight(0x38bdf8, 1.8, 1.5);
-    hudLed.position.set(1.15, 2.05, 0.78);
-    machineGroup.add(hudLed);
 
-    // Floating Ground Ambient Contact Shadow
-    const groundGeo = new THREE.CircleGeometry(2.2, 48);
+    // =========================================================================
+    // 8. LEVITATING DUAL COUNTER-ROTATING ENERGY RINGS & SOFT CONTACT SHADOW
+    // =========================================================================
+    const groundGeo = new THREE.CircleGeometry(2.3, 48);
     const groundMat = new THREE.MeshBasicMaterial({
       color: 0x0284c7,
       transparent: true,
@@ -298,23 +400,37 @@ export default function Xerox3DViewer() {
     groundMesh.receiveShadow = true;
     scene.add(groundMesh);
 
-    const ringGeo = new THREE.RingGeometry(1.1, 1.8, 48);
-    const ringMat = new THREE.MeshBasicMaterial({
+    // Outer Translucent Cyan Ring
+    const outerRingGeo = new THREE.RingGeometry(1.2, 1.8, 64);
+    const outerRingMat = new THREE.MeshBasicMaterial({
       color: 0x38bdf8,
+      transparent: true,
+      opacity: 0.18,
+      side: THREE.DoubleSide,
+    });
+    const outerRingMesh = new THREE.Mesh(outerRingGeo, outerRingMat);
+    outerRingMesh.rotation.x = -Math.PI / 2;
+    outerRingMesh.position.set(machinePosX, isMobile ? 0.01 : 0.21, 0);
+    scene.add(outerRingMesh);
+
+    // Inner Electric Blue Ring (Counter-rotating)
+    const innerRingGeo = new THREE.RingGeometry(0.7, 1.05, 48);
+    const innerRingMat = new THREE.MeshBasicMaterial({
+      color: 0x0284c7,
       transparent: true,
       opacity: 0.16,
       side: THREE.DoubleSide,
     });
-    const ringMesh = new THREE.Mesh(ringGeo, ringMat);
-    ringMesh.rotation.x = -Math.PI / 2;
-    ringMesh.position.set(machinePosX, isMobile ? 0.01 : 0.21, 0);
-    scene.add(ringMesh);
+    const innerRingMesh = new THREE.Mesh(innerRingGeo, innerRingMat);
+    innerRingMesh.rotation.x = -Math.PI / 2;
+    innerRingMesh.position.set(machinePosX, isMobile ? 0.02 : 0.22, 0);
+    scene.add(innerRingMesh);
 
-    // --- Studio Lighting ---
-    const ambientLight = new THREE.AmbientLight(0xffffff, 2.4);
+    // --- Studio Lighting Scheme ---
+    const ambientLight = new THREE.AmbientLight(0xffffff, 2.5);
     scene.add(ambientLight);
 
-    const keyLight = new THREE.DirectionalLight(0xffffff, 2.6);
+    const keyLight = new THREE.DirectionalLight(0xffffff, 2.8);
     keyLight.position.set(6, 8, 6);
     keyLight.castShadow = true;
     keyLight.shadow.mapSize.width = 1024;
@@ -322,15 +438,15 @@ export default function Xerox3DViewer() {
     keyLight.shadow.bias = -0.0005;
     scene.add(keyLight);
 
-    const skyRimLight = new THREE.DirectionalLight(0xbae6fd, 2.0);
+    const skyRimLight = new THREE.DirectionalLight(0xbae6fd, 2.2);
     skyRimLight.position.set(-5, 4, -4);
     scene.add(skyRimLight);
 
-    const fillLight = new THREE.DirectionalLight(0xf1f5f9, 1.6);
+    const fillLight = new THREE.DirectionalLight(0xf1f5f9, 1.8);
     fillLight.position.set(0, 4, 5);
     scene.add(fillLight);
 
-    // --- Scroll Listener with Inertial Smoothing for Silky-Smooth Animation ---
+    // --- Responsive Scroll Listener with Snappy Velocity ---
     let rawScrollY = window.scrollY || window.pageYOffset || 0;
     let smoothScrollY = rawScrollY;
     const handleScroll = () => {
@@ -338,7 +454,7 @@ export default function Xerox3DViewer() {
     };
     window.addEventListener("scroll", handleScroll, { passive: true });
 
-    // --- Animation & Cinematic Tour Loop ---
+    // --- Animation & Quick Responsive Transitions Loop ---
     let clock = new THREE.Clock();
     let animationFrameId;
 
@@ -349,65 +465,75 @@ export default function Xerox3DViewer() {
       const delta = clock.getDelta();
       const elapsedTime = clock.getElapsedTime();
 
-      // Inertial scroll interpolation: eliminates wheel tick jumps, guaranteeing buttery smoothness
-      smoothScrollY = THREE.MathUtils.lerp(smoothScrollY, rawScrollY, 0.08);
+      // Quick Responsive Scroll Interpolation (Snappy velocity, zero sluggishness)
+      smoothScrollY = THREE.MathUtils.lerp(smoothScrollY, rawScrollY, 0.22);
 
-      // Smooth Bidirectional Trajectory Choreography:
-      // 1. Hero / Main Page (0 - 600px): Starts on RIGHT SIDE (x = 2.5), glides into MIDDLE (x = 0.0), scale 0.48 -> 0.68
-      // 2. Problem -> Architecture "other page" (600 - 1400px): Glides from MIDDLE (x = 0.0) back to RIGHT SIDE (x = 2.3)
-      // 3. Architecture -> Comparison / ROI (1400 - 2300px): Glides from RIGHT SIDE (x = 2.3) to MIDDLE (x = 0.0)
-      // 4. ROI -> FAQ / Footer (2300px+): Glides from MIDDLE (x = 0.0) back to RIGHT SIDE (x = 2.3)
-      // On reverse / upward scrolling, Hermite smoothstep ensures seamless reverse motion without any jerking.
+      // QUICK RESPONSIVE TRAJECTORY:
+      // - 0px - 380px: Fast, gratifying glide from right (x = 2.4) into middle (x = 0.0), scale 0.36 -> 0.52
+      // - 380px - 1300px: Weaves smoothly back to right (x = 2.2) behind problem bottlenecks
+      // - 1300px - 2200px: Weaves to middle (x = 0.0) behind architecture
+      // - 2200px+: Settles to right (x = 2.2)
       let targetX, targetScale, targetY;
       if (isMobile) {
         targetX = 0;
         targetScale = 0.40;
         targetY = 0.0 - Math.min(1, smoothScrollY / 2000) * 0.40;
       } else {
-        if (smoothScrollY <= 850) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 850);
+        if (smoothScrollY <= 380) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 0, 380);
           targetX = THREE.MathUtils.lerp(2.4, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.36, 0.50, t);
-          targetY = THREE.MathUtils.lerp(0.20, -0.20, t);
-        } else if (smoothScrollY <= 1700) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 850, 1700);
+          targetScale = THREE.MathUtils.lerp(0.36, 0.52, t);
+          targetY = THREE.MathUtils.lerp(0.20, -0.18, t);
+        } else if (smoothScrollY <= 1300) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 380, 1300);
           targetX = THREE.MathUtils.lerp(0.0, 2.2, t);
-          targetScale = THREE.MathUtils.lerp(0.50, 0.44, t);
-          targetY = THREE.MathUtils.lerp(-0.20, -0.38, t);
-        } else if (smoothScrollY <= 2600) {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 1700, 2600);
+          targetScale = THREE.MathUtils.lerp(0.52, 0.46, t);
+          targetY = THREE.MathUtils.lerp(-0.18, -0.36, t);
+        } else if (smoothScrollY <= 2200) {
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 1300, 2200);
           targetX = THREE.MathUtils.lerp(2.2, 0.0, t);
-          targetScale = THREE.MathUtils.lerp(0.44, 0.50, t);
-          targetY = THREE.MathUtils.lerp(-0.38, -0.52, t);
+          targetScale = THREE.MathUtils.lerp(0.46, 0.52, t);
+          targetY = THREE.MathUtils.lerp(-0.36, -0.50, t);
         } else {
-          const t = THREE.MathUtils.smoothstep(smoothScrollY, 2600, 3500);
+          const t = THREE.MathUtils.smoothstep(smoothScrollY, 2200, 3200);
           targetX = THREE.MathUtils.lerp(0.0, 2.2, t);
-          targetScale = THREE.MathUtils.lerp(0.50, 0.44, t);
-          targetY = THREE.MathUtils.lerp(-0.52, -0.65, t);
+          targetScale = THREE.MathUtils.lerp(0.52, 0.46, t);
+          targetY = THREE.MathUtils.lerp(-0.50, -0.65, t);
         }
       }
 
-      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.08);
+      // Snappy Position & Scale Interpolation (0.16 factor ensures immediate response)
+      const currentScale = THREE.MathUtils.lerp(machineGroup.scale.x, targetScale, 0.16);
       machineGroup.scale.set(currentScale, currentScale, currentScale);
 
       const baseAnimY = activeStageRef.current === 0 ? Math.sin(elapsedTime * 1.5) * 0.02 : 0;
-      const currentX = THREE.MathUtils.lerp(machineGroup.position.x, targetX, 0.08);
-      const currentY = THREE.MathUtils.lerp(machineGroup.position.y - baseAnimY, targetY, 0.08);
+      const currentX = THREE.MathUtils.lerp(machineGroup.position.x, targetX, 0.16);
+      const currentY = THREE.MathUtils.lerp(machineGroup.position.y - baseAnimY, targetY, 0.16);
 
       machineGroup.position.x = currentX;
       machineGroup.position.y = currentY + baseAnimY;
 
       groundMesh.position.x = currentX;
       groundMesh.position.y = currentY;
-      ringMesh.position.x = currentX;
-      ringMesh.position.y = currentY + 0.01;
+      outerRingMesh.position.x = currentX;
+      outerRingMesh.position.y = currentY + 0.01;
+      innerRingMesh.position.x = currentX;
+      innerRingMesh.position.y = currentY + 0.02;
 
-      // Scale ground shadow and ring with the machine
+      // Rotate Dual Counter-Rotating Base Rings
+      outerRingMesh.rotation.z += delta * 0.45;
+      innerRingMesh.rotation.z -= delta * 0.65;
+
+      // Scale ground shadow and rings proportionally with machine scale
       const scaleFactor = currentScale / 0.48;
-      ringMesh.scale.setScalar(scaleFactor * (1.0 + Math.sin(elapsedTime * 2.0) * 0.04));
+      outerRingMesh.scale.setScalar(scaleFactor * (1.0 + Math.sin(elapsedTime * 2.5) * 0.03));
+      innerRingMesh.scale.setScalar(scaleFactor * (1.0 + Math.cos(elapsedTime * 2.5) * 0.03));
       groundMesh.scale.setScalar(scaleFactor);
 
-      // Cinematic Tour Sequencer
+      // Continuous High-Speed Spin of Internal Photonics Laser Drum
+      drumMesh.rotation.x += delta * 3.5;
+
+      // Brisk Cinematic Tour Sequencer (3.0s - 3.5s per stage)
       if (isTourPlayingRef.current) {
         stageTimeRef.current += delta;
         const currentStageDef = STAGES[activeStageRef.current];
@@ -418,7 +544,7 @@ export default function Xerox3DViewer() {
         }
       }
 
-      // Camera adapts dynamically to machine movement
+      // Quick-Responding Camera Interpolation (0.12 factor)
       const targetPreset = PRESETS[activeStageRef.current] || PRESETS[0];
       const offsetX = currentX - machinePosX;
       const offsetY = currentY - 0.20;
@@ -426,29 +552,29 @@ export default function Xerox3DViewer() {
       const dynamicPresetPos = targetPreset.pos.clone().add(new THREE.Vector3(offsetX * 0.55, offsetY * 0.35, 0));
       const dynamicPresetTarget = targetPreset.target.clone().add(new THREE.Vector3(offsetX * 0.75, offsetY * 0.45, 0));
 
-      camera.position.lerp(dynamicPresetPos, 0.06);
-      currentLookAt.lerp(dynamicPresetTarget, 0.06);
+      camera.position.lerp(dynamicPresetPos, 0.12);
+      currentLookAt.lerp(dynamicPresetTarget, 0.12);
       camera.lookAt(currentLookAt);
 
-      // Subtle Ambient Machine Rotation & Floating (Active at all sizes)
+      // Subtle Ambient Kiosk Rotation
       if (activeStageRef.current === 0) {
-        machineGroup.rotation.y = Math.sin(elapsedTime * 0.4) * 0.06;
+        machineGroup.rotation.y = Math.sin(elapsedTime * 0.5) * 0.05;
       } else {
         machineGroup.rotation.y = 0;
       }
 
-      // Scanner Laser Sweep
-      const laserPos = Math.sin(elapsedTime * 2.8) * 0.65;
+      // High-Speed Optical Scanner Laser Sweep
+      const laserPos = Math.sin(elapsedTime * 3.2) * 0.66;
       laserBar.position.x = laserPos;
       laserLight.position.x = laserPos;
-      laserLight.intensity = 2.4 + Math.sin(elapsedTime * 6.0) * 0.8;
+      laserLight.intensity = 2.6 + Math.sin(elapsedTime * 7.0) * 0.8;
 
-      // Gliding Paper Ejection
-      const paperCycle = (elapsedTime * 0.7) % 1;
+      // Smart Document Gliding Output Cycle
+      const paperCycle = (elapsedTime * 0.85) % 1;
       const startX = -0.7;
-      const endX = -1.25;
-      const startY = 1.54;
-      const endY = 1.41;
+      const endX = -1.26;
+      const startY = 1.52;
+      const endY = 1.38;
 
       glidingPaper.position.x = startX + (endX - startX) * paperCycle;
       glidingPaper.position.y = startY + (endY - startY) * paperCycle;
