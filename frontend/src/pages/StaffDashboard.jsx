@@ -38,6 +38,9 @@ import {
   Lock,
   Coins,
   Copy,
+  Cpu,
+  Zap,
+  ArrowUpDown,
 } from "lucide-react";
 import {
   fetchAllJobs,
@@ -49,6 +52,8 @@ import {
   rejectJob,
   fetchEarningsAnalytics,
   fetchSystemLogs,
+  fetchAlgorithmStatus,
+  triggerAlgorithmProcessNext,
 } from "../api";
 
 // CSV Download Helper
@@ -107,6 +112,8 @@ export default function StaffDashboard() {
   const [activePrinting, setActivePrinting] = useState({});
   const [notificationLog, setNotificationLog] = useState([]);
   const [showCustomizations, setShowCustomizations] = useState(false);
+  const [customizationsTab, setCustomizationsTab] = useState("pricing");
+  const [algoStatus, setAlgoStatus] = useState(null);
 
   // Analytics & Earnings state
   const [analytics, setAnalytics] = useState(null);
@@ -128,6 +135,16 @@ export default function StaffDashboard() {
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
   const [expandedLogId, setExpandedLogId] = useState(null);
 
+  // Load algorithm status
+  const loadAlgoStatus = async () => {
+    try {
+      const data = await fetchAlgorithmStatus();
+      setAlgoStatus(data);
+    } catch (e) {
+      console.warn("Could not load algorithm status:", e);
+    }
+  };
+
   // Load live jobs with concurrency guard
   const loadingJobsRef = useRef(false);
   const loadJobs = async () => {
@@ -139,6 +156,7 @@ export default function StaffDashboard() {
         const validJobs = data.filter((j) => j.job_id && !j.job_id.startsWith("_config"));
         setJobs(validJobs);
       }
+      loadAlgoStatus();
     } catch (e) {
       console.warn("Could not load jobs:", e);
     } finally {
@@ -176,6 +194,7 @@ export default function StaffDashboard() {
   useEffect(() => {
     loadJobs();
     loadAnalytics();
+    loadAlgoStatus();
   }, []);
 
   useEffect(() => {
@@ -216,11 +235,17 @@ export default function StaffDashboard() {
     );
   });
 
+  const queuedSorted = [...filteredJobs.filter((j) => j.status === "queued")].sort((a, b) => {
+    const rankA = a.priority_metadata?.priority_rank ?? 9999;
+    const rankB = b.priority_metadata?.priority_rank ?? 9999;
+    return rankA - rankB;
+  });
+
   const columns = {
     received: filteredJobs.filter(
       (j) => j.status === "received" || j.status === "needs_info" || j.status === "inquiry"
     ),
-    queued: filteredJobs.filter((j) => j.status === "queued"),
+    queued: queuedSorted,
     printing: filteredJobs.filter((j) => j.status === "printing"),
     ready: filteredJobs.filter((j) => j.status === "ready"),
     completed: filteredJobs.filter((j) => j.status === "completed"),
@@ -382,6 +407,37 @@ export default function StaffDashboard() {
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
                   <span>AWS Native</span>
                 </span>
+                {algoStatus && (
+                  <span
+                    onClick={() => {
+                      setCustomizationsTab("algorithm");
+                      setShowCustomizations(true);
+                    }}
+                    className={`cursor-pointer px-2.5 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider flex items-center space-x-1.5 transition-all shadow-sm ${
+                      algoStatus.enabled
+                        ? "bg-indigo-50 text-indigo-900 border-indigo-200 hover:bg-indigo-100"
+                        : "bg-slate-100 text-slate-700 border-slate-200 hover:bg-slate-200"
+                    }`}
+                    title="Click to configure Queue Execution Algorithm"
+                  >
+                    <Zap className={`w-3 h-3 ${algoStatus.enabled ? "text-amber-500 fill-amber-400 animate-pulse" : "text-slate-400"}`} />
+                    <span>
+                      Algorithm:{" "}
+                      {algoStatus.priority_metric === "higher_price"
+                        ? "Higher Price"
+                        : algoStatus.priority_metric === "lower_price"
+                        ? "Lower Price"
+                        : algoStatus.priority_metric === "more_pages"
+                        ? "More Pages"
+                        : "Fewer Pages"}
+                    </span>
+                    <span className={`text-[8px] px-1.5 py-0.2 rounded-full font-black ${
+                      algoStatus.enabled ? "bg-indigo-600 text-white" : "bg-slate-300 text-slate-700"
+                    }`}>
+                      {algoStatus.enabled ? "Auto" : "Manual"}
+                    </span>
+                  </span>
+                )}
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 Multi-channel queue, live printer queue, earnings ledger, zero-retention privacy, and system audit logs.
@@ -393,11 +449,24 @@ export default function StaffDashboard() {
         {/* Global Action Buttons */}
         <div className="flex items-center space-x-2.5">
           <button
-            onClick={() => setShowCustomizations(true)}
+            onClick={() => {
+              setCustomizationsTab("pricing");
+              setShowCustomizations(true);
+            }}
             className="flex items-center space-x-1.5 px-3.5 py-2 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm shadow-indigo-500/20"
           >
             <SlidersHorizontal className="w-3.5 h-3.5" />
-            <span>AI Persona & Prices</span>
+            <span>Store AI & Pricing</span>
+          </button>
+          <button
+            onClick={() => {
+              setCustomizationsTab("algorithm");
+              setShowCustomizations(true);
+            }}
+            className="flex items-center space-x-1.5 px-3.5 py-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 text-indigo-800 rounded-xl text-xs font-bold transition-all shadow-sm"
+          >
+            <Cpu className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Algorithm</span>
           </button>
           <button
             onClick={handleRefreshCurrent}
@@ -533,6 +602,77 @@ export default function StaffDashboard() {
             </div>
           </div>
 
+          {/* Autonomous Algorithm Pipeline Banner */}
+          {algoStatus && (
+            <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 text-white p-4 rounded-2xl shadow-sm border border-indigo-900/50 flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-xl bg-indigo-600/30 text-indigo-300 flex items-center justify-center border border-indigo-500/30 shrink-0">
+                  <Zap className={`w-5 h-5 ${algoStatus.enabled ? "text-amber-400 fill-amber-400 animate-pulse" : "text-slate-400"}`} />
+                </div>
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-xs font-black uppercase tracking-wider text-indigo-200">
+                      Autonomous Queue Algorithm
+                    </span>
+                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
+                      algoStatus.enabled
+                        ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                        : "bg-slate-700 text-slate-300"
+                    }`}>
+                      {algoStatus.enabled ? "Auto-Pilot Active (3s loop)" : "Manual Dispatch"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-300 mt-0.5">
+                    Order Priority: <strong className="text-white">{
+                      algoStatus.priority_metric === "higher_price"
+                        ? "Higher Price First (Max Revenue)"
+                        : algoStatus.priority_metric === "lower_price"
+                        ? "Lower Price First (Express Micro-Orders)"
+                        : algoStatus.priority_metric === "more_pages"
+                        ? "More Pages First (Bulk Academic Run)"
+                        : "Fewer Pages First (Shortest Job First / SJF)"
+                    }</strong>
+                    {algoStatus.top_priority_order && (
+                      <span className="ml-2 text-amber-300 font-bold">
+                        • Next to Print: #{algoStatus.top_priority_order} ({algoStatus.top_priority_metadata?.priority_reason || ""})
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2 shrink-0">
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await triggerAlgorithmProcessNext();
+                      await loadJobs();
+                      await loadAlgoStatus();
+                      alert(res.message || "Step processed successfully");
+                    } catch (e) {
+                      alert("Execution error: " + e.message);
+                    }
+                  }}
+                  className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold transition-all shadow-sm flex items-center space-x-1.5"
+                  title="Force immediate execution of the next algorithm step"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current text-white" />
+                  <span>Execute Next Step</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setCustomizationsTab("algorithm");
+                    setShowCustomizations(true);
+                  }}
+                  className="px-3 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all border border-white/10 flex items-center space-x-1.5"
+                >
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
+                  <span>Configure</span>
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Filter Bar */}
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div className="flex flex-wrap items-center gap-3">
@@ -636,6 +776,27 @@ export default function StaffDashboard() {
                   {columns.queued.length}
                 </span>
               </div>
+              {algoStatus && (
+                <div className="mb-2 px-1 text-[10px] flex items-center justify-between text-slate-500 font-semibold">
+                  <span className="truncate">
+                    Priority: {
+                      algoStatus.priority_metric === "higher_price"
+                        ? "Higher Price (₹)"
+                        : algoStatus.priority_metric === "lower_price"
+                        ? "Lower Price (₹)"
+                        : algoStatus.priority_metric === "more_pages"
+                        ? "More Pages"
+                        : "Fewer Pages"
+                    }
+                  </span>
+                  {algoStatus.enabled && (
+                    <span className="text-indigo-600 font-bold flex items-center space-x-0.5 shrink-0">
+                      <Zap className="w-2.5 h-2.5 fill-current text-amber-500" />
+                      <span>Auto-Pick</span>
+                    </span>
+                  )}
+                </div>
+              )}
               <div className="flex-1 overflow-y-auto space-y-3 pr-1">
                 {columns.queued.map((job) => (
                   <JobCard
@@ -1540,10 +1701,12 @@ export default function StaffDashboard() {
       {/* Store Customizations & AI Persona Modal */}
       <CustomizationsModal
         isOpen={showCustomizations}
+        defaultTab={customizationsTab}
         onClose={() => setShowCustomizations(false)}
         onSaved={() => {
           loadJobs();
           loadAnalytics();
+          loadAlgoStatus();
         }}
       />
     </div>
@@ -1580,6 +1743,39 @@ function JobCard({ job, actionButton, onReject }) {
           {channel}
         </span>
       </div>
+
+      {/* Algorithm Priority Badge if queued */}
+      {job.priority_metadata && (
+        <div
+          className={`flex items-center justify-between px-2.5 py-1.5 rounded-xl text-[10px] font-bold border transition-all ${
+            job.priority_metadata.is_top_priority
+              ? "bg-amber-50 text-amber-900 border-amber-300 shadow-sm ring-1 ring-amber-300/60"
+              : "bg-slate-50 text-slate-700 border-slate-200"
+          }`}
+        >
+          <div className="flex items-center space-x-1.5">
+            <Zap
+              className={`w-3.5 h-3.5 ${
+                job.priority_metadata.is_top_priority
+                  ? "text-amber-600 fill-amber-500 animate-pulse"
+                  : "text-slate-400"
+              }`}
+            />
+            <span className="font-extrabold">#{job.priority_metadata.priority_rank} Priority</span>
+            {job.priority_metadata.is_top_priority && (
+              <span className="bg-amber-200 text-amber-900 text-[8px] px-1.5 py-0.2 rounded-full font-black uppercase tracking-wider">
+                Next to Print
+              </span>
+            )}
+          </div>
+          <span
+            className="text-[9px] font-medium text-slate-500 truncate max-w-[125px]"
+            title={job.priority_metadata.priority_reason}
+          >
+            {job.priority_metadata.priority_reason}
+          </span>
+        </div>
+      )}
 
       {/* Customer Name & Message */}
       <div>
@@ -1665,8 +1861,8 @@ function JobCard({ job, actionButton, onReject }) {
   );
 }
 
-function CustomizationsModal({ isOpen, onClose, onSaved }) {
-  const [activeTab, setActiveTab] = useState("pricing");
+function CustomizationsModal({ isOpen, onClose, onSaved, defaultTab = "pricing" }) {
+  const [activeTab, setActiveTab] = useState(defaultTab);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -1676,8 +1872,9 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
   useEffect(() => {
     if (isOpen) {
       loadConfig();
+      if (defaultTab) setActiveTab(defaultTab);
     }
-  }, [isOpen]);
+  }, [isOpen, defaultTab]);
 
   const loadConfig = async () => {
     setLoading(true);
@@ -1788,6 +1985,20 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
           >
             <BookOpen className="w-3.5 h-3.5" />
             <span>Business Context & RAG</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("algorithm")}
+            className={`py-3 px-4 text-xs font-bold border-b-2 transition-all flex items-center space-x-2 ${
+              activeTab === "algorithm"
+                ? "border-indigo-600 text-indigo-700"
+                : "border-transparent text-slate-500 hover:text-slate-900"
+            }`}
+          >
+            <Cpu className="w-3.5 h-3.5" />
+            <span>Algorithm</span>
+            <span className="text-[9px] bg-indigo-100 text-indigo-700 px-1.5 py-0.2 rounded-full font-black">
+              PRIORITY
+            </span>
           </button>
         </div>
 
@@ -2048,7 +2259,7 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
                 </span>
               </div>
             </div>
-          ) : (
+          ) : activeTab === "context" ? (
             <div className="space-y-5">
               <div className="space-y-1.5">
                 <label className="text-xs font-bold text-slate-700">Store Display Name</label>
@@ -2109,6 +2320,331 @@ function CustomizationsModal({ isOpen, onClose, onSaved }) {
                   </div>
                 </div>
               )}
+            </div>
+          ) : (
+            /* Algorithm Tab */
+            <div className="space-y-6">
+              {/* Header Description & Master Toggle */}
+              <div className="bg-gradient-to-r from-indigo-50/90 to-purple-50/90 border border-indigo-100 p-4 rounded-2xl">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <div className="w-8 h-8 rounded-xl bg-indigo-600 text-white flex items-center justify-center shadow-sm">
+                      <Cpu className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">Autonomous Queue Execution Algorithm</h3>
+                      <p className="text-[11px] text-slate-500">Auto-schedules and prioritizes print jobs from Intake to Pickup</p>
+                    </div>
+                  </div>
+                  <label className="flex items-center space-x-2 cursor-pointer bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                    <span className="text-xs font-extrabold text-slate-800">Auto-Pilot Engine</span>
+                    <input
+                      type="checkbox"
+                      checked={config?.algorithm?.enabled ?? false}
+                      onChange={(e) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          algorithm: {
+                            ...(prev.algorithm || {}),
+                            enabled: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                  </label>
+                </div>
+              </div>
+
+              {/* 4 Priority Dispatch Criteria Cards */}
+              <div className="space-y-2.5">
+                <div>
+                  <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700 flex items-center space-x-1.5">
+                    <ArrowUpDown className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>Priority Dispatch Criteria</span>
+                  </h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5">
+                    Select the execution criteria determining which queued job gets printed next:
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Criteria 1: Higher Price */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        algorithm: {
+                          ...(prev.algorithm || {}),
+                          priority_metric: "higher_price",
+                        },
+                      }))
+                    }
+                    className={`p-3.5 text-left rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                      (config?.algorithm?.priority_metric || "higher_price") === "higher_price"
+                        ? "border-indigo-600 bg-indigo-50/60 shadow-sm shadow-indigo-100 ring-1 ring-indigo-500/20"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-black text-slate-900 flex items-center space-x-1.5">
+                          <span>💰 Higher Price</span>
+                        </span>
+                        {(config?.algorithm?.priority_metric || "higher_price") === "higher_price" && (
+                          <span className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Prioritizes highest revenue orders (₹) first. Maximizes incoming cash flow and shop throughput.
+                      </p>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                      <span>Sort: Highest ₹ First</span>
+                      <span className="text-indigo-600 font-bold">Max Revenue</span>
+                    </div>
+                  </button>
+
+                  {/* Criteria 2: Lower Price */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        algorithm: {
+                          ...(prev.algorithm || {}),
+                          priority_metric: "lower_price",
+                        },
+                      }))
+                    }
+                    className={`p-3.5 text-left rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                      config?.algorithm?.priority_metric === "lower_price"
+                        ? "border-indigo-600 bg-indigo-50/60 shadow-sm shadow-indigo-100 ring-1 ring-indigo-500/20"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-black text-slate-900 flex items-center space-x-1.5">
+                          <span>⚡ Lower Price</span>
+                        </span>
+                        {config?.algorithm?.priority_metric === "lower_price" && (
+                          <span className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Prioritizes lowest cost micro-orders (₹) first. Quick single-page requests get dispatched instantly.
+                      </p>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                      <span>Sort: Lowest ₹ First</span>
+                      <span className="text-amber-600 font-bold">Express Micro-Orders</span>
+                    </div>
+                  </button>
+
+                  {/* Criteria 3: More Pages */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        algorithm: {
+                          ...(prev.algorithm || {}),
+                          priority_metric: "more_pages",
+                        },
+                      }))
+                    }
+                    className={`p-3.5 text-left rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                      config?.algorithm?.priority_metric === "more_pages"
+                        ? "border-indigo-600 bg-indigo-50/60 shadow-sm shadow-indigo-100 ring-1 ring-indigo-500/20"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-black text-slate-900 flex items-center space-x-1.5">
+                          <span>📚 More Pages</span>
+                        </span>
+                        {config?.algorithm?.priority_metric === "more_pages" && (
+                          <span className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Prioritizes highest total page volume (pages × copies) first. Keeps heavy thesis & lab manual runs moving.
+                      </p>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                      <span>Sort: Largest Volume First</span>
+                      <span className="text-purple-600 font-bold">Bulk Academic Run</span>
+                    </div>
+                  </button>
+
+                  {/* Criteria 4: Fewer Pages */}
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        algorithm: {
+                          ...(prev.algorithm || {}),
+                          priority_metric: "fewer_pages",
+                        },
+                      }))
+                    }
+                    className={`p-3.5 text-left rounded-2xl border-2 transition-all flex flex-col justify-between ${
+                      config?.algorithm?.priority_metric === "fewer_pages"
+                        ? "border-indigo-600 bg-indigo-50/60 shadow-sm shadow-indigo-100 ring-1 ring-indigo-500/20"
+                        : "border-slate-200 hover:border-slate-300 bg-white"
+                    }`}
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-black text-slate-900 flex items-center space-x-1.5">
+                          <span>⏱️ Fewer Pages</span>
+                        </span>
+                        {config?.algorithm?.priority_metric === "fewer_pages" && (
+                          <span className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">
+                            ACTIVE
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-slate-600 leading-relaxed">
+                        Shortest Job First (SJF). Prioritizes jobs with smallest page counts to minimize average student wait times.
+                      </p>
+                    </div>
+                    <div className="mt-2.5 pt-2 border-t border-slate-200/60 flex items-center justify-between text-[10px] text-slate-500 font-semibold">
+                      <span>Sort: Smallest Count First</span>
+                      <span className="text-emerald-600 font-bold">Shortest Job First</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Automation Stages Checkboxes */}
+              <div className="space-y-2.5 pt-3 border-t border-slate-100">
+                <h4 className="text-xs font-extrabold uppercase tracking-wider text-slate-700">
+                  Autonomous Pipeline Stages
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  <label className="flex items-start space-x-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.algorithm?.auto_advance_intake ?? true}
+                      onChange={(e) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          algorithm: {
+                            ...(prev.algorithm || {}),
+                            auto_advance_intake: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">📥 Auto-Intake Validated Orders</span>
+                      <span className="text-[10px] text-slate-500">Auto-moves confirmed orders to 'queued'.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start space-x-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.algorithm?.auto_print ?? true}
+                      onChange={(e) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          algorithm: {
+                            ...(prev.algorithm || {}),
+                            auto_print: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">🖨️ Auto-Print #1 Priority Job</span>
+                      <span className="text-[10px] text-slate-500">Dispatches top-ranked job when printer is free.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start space-x-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.algorithm?.auto_ready ?? true}
+                      onChange={(e) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          algorithm: {
+                            ...(prev.algorithm || {}),
+                            auto_ready: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">📦 Auto-Ready & S3 Shred</span>
+                      <span className="text-[10px] text-slate-500">Notifies student & permanently shreds S3 file.</span>
+                    </div>
+                  </label>
+
+                  <label className="flex items-start space-x-2.5 p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-slate-50 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={config?.algorithm?.auto_complete ?? false}
+                      onChange={(e) =>
+                        setConfig((prev) => ({
+                          ...prev,
+                          algorithm: {
+                            ...(prev.algorithm || {}),
+                            auto_complete: e.target.checked,
+                          },
+                        }))
+                      }
+                      className="mt-0.5 w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-slate-800 block">🏁 Auto-Complete Archive</span>
+                      <span className="text-[10px] text-slate-500">Archives picked-up orders after 60s.</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Speed / Duration setting */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block">Simulated Print Execution Speed</label>
+                  <span className="text-[11px] text-slate-500">Seconds a job prints before moving to Ready</span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="number"
+                    min="2"
+                    max="60"
+                    value={config?.algorithm?.print_speed_seconds ?? 15}
+                    onChange={(e) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        algorithm: {
+                          ...(prev.algorithm || {}),
+                          print_speed_seconds: parseInt(e.target.value) || 15,
+                        },
+                      }))
+                    }
+                    className="w-16 px-2.5 py-1.5 border border-slate-300 rounded-xl text-xs font-bold text-center"
+                  />
+                  <span className="text-xs font-semibold text-slate-500">seconds</span>
+                </div>
+              </div>
             </div>
           )}
         </div>

@@ -147,3 +147,18 @@ export async function fetchSystemLogs(limit = 150, eventType = null, jobId = nul
   return res.json();
 }
 
+export async function fetchAlgorithmStatus() {
+  const res = await fetch(`${BASE_URL}/algorithm/status`);
+  if (!res.ok) throw new Error("Failed to fetch algorithm status");
+  return res.json();
+}
+
+export async function triggerAlgorithmProcessNext() {
+  const res = await fetch(`${BASE_URL}/algorithm/process-next`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+  });
+  if (!res.ok) throw new Error("Failed to trigger algorithm process");
+  return res.json();
+}
+

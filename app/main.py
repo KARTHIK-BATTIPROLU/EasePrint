@@ -32,6 +32,11 @@ from app.session_store import session_store
 from app.s3_client import s3_client
 from app.customizations import customizations_manager, StoreCustomizations
 from app.audit_logger import audit_logger
+from app.algorithm import (
+    QueueAlgorithmConfig,
+    sort_jobs_by_priority,
+    get_priority_metadata,
+)
 import io
 import time
 
@@ -70,9 +75,18 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         logger.warning(f"Could not auto-provision DynamoDB table: {exc}")
 
+    # 3. Start background Auto-Pilot queue runner
+    auto_pilot_task = asyncio.create_task(auto_pilot_worker())
+
     yield
 
     logger.info("Shutting down EasePrint Backend...")
+    auto_pilot_task.cancel()
+    try:
+        await auto_pilot_task
+    except asyncio.CancelledError:
+        pass
+
     if hasattr(app.state, "arq_pool") and app.state.arq_pool:
         await app.state.arq_pool.close()
         logger.info("Closed ARQ Redis pool.")
@@ -403,9 +417,22 @@ async def list_jobs():
             "notes": record.get("notes"),
         })
 
-    _jobs_cache["data"] = results
+    # Prioritize queued jobs according to active store algorithm
+    config = await customizations_manager.get_customizations()
+    algo = getattr(config, "algorithm", None)
+    metric = getattr(algo, "priority_metric", "higher_price") if algo else "higher_price"
+
+    queued_jobs = [j for j in results if j.get("status") == "queued"]
+    other_jobs = [j for j in results if j.get("status") != "queued"]
+
+    sorted_queued = sort_jobs_by_priority(queued_jobs, metric=metric)
+    for idx, job in enumerate(sorted_queued, start=1):
+        job["priority_metadata"] = get_priority_metadata(job, rank=idx, metric=metric)
+
+    final_results = sorted_queued + other_jobs
+    _jobs_cache["data"] = final_results
     _jobs_cache["timestamp"] = time.time()
-    return results
+    return final_results
 
 
 @app.get(
@@ -841,6 +868,178 @@ async def reject_job(job_id: str, req: RejectJobRequest):
         "status": "rejected",
         "rejection_reason": req.reason,
     }
+
+
+# =========================================================================
+# AUTONOMOUS QUEUE ALGORITHM EXECUTION ENGINE (AUTO-PILOT)
+# =========================================================================
+
+async def process_autonomous_queue_pipeline(config: StoreCustomizations) -> Dict[str, Any]:
+    """
+    Autonomous Queue Algorithm Execution Engine.
+    Executes the next necessary state transition in the print lifecycle:
+    Stage 1: Intake (received -> queued)
+    Stage 2: Printing progression (printing -> ready via mark_job_print_ready)
+    Stage 3: Algorithm selection (queued -> printing for #1 priority job)
+    Stage 4: Completion (ready -> completed if auto_complete enabled)
+    """
+    algo = getattr(config, "algorithm", None)
+    if not algo or not algo.enabled:
+        return {"action": "disabled", "message": "Autonomous Algorithm is disabled."}
+
+    dynamo = DynamoDBClient()
+    items = await dynamo.list_all_jobs(limit=100)
+    items = [j for j in items if not str(j.get("job_id", "")).startswith("_")]
+
+    metric = algo.priority_metric
+    now_dt = datetime.datetime.now(datetime.timezone.utc)
+    now_iso = now_dt.isoformat()
+
+    # Stage 1: Auto-Intake (Advance incoming inquiry/received jobs to queued)
+    if algo.auto_advance_intake:
+        received_jobs = [j for j in items if j.get("status") == "received"]
+        if received_jobs:
+            target = received_jobs[0]
+            job_id = target["job_id"]
+            await dynamo.update_job_fields(
+                job_id,
+                {
+                    "status": "queued",
+                    "updated_at": now_iso,
+                    "notes": "Approved & queued automatically by Algorithm Auto-Pilot",
+                }
+            )
+            invalidate_jobs_cache()
+            audit_logger.log(
+                "ALGORITHM_DECISION",
+                f"Auto-Pilot approved intake order #{job_id} into queued line",
+                job_id=job_id,
+                details={"action": "auto_intake_to_queued", "metric": metric},
+            )
+            return {"action": "auto_intake", "job_id": job_id, "status": "queued"}
+
+    # Stage 2: Check current printing job
+    printing_jobs = [j for j in items if j.get("status") == "printing"]
+    if printing_jobs:
+        active_job = printing_jobs[0]
+        job_id = active_job["job_id"]
+        updated_at_str = active_job.get("updated_at") or active_job.get("created_at") or ""
+        elapsed = 999.0
+        if updated_at_str:
+            try:
+                dt = datetime.datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                elapsed = (now_dt - dt).total_seconds()
+            except Exception:
+                elapsed = float(algo.print_speed_seconds) + 1.0
+
+        if elapsed >= float(algo.print_speed_seconds) and algo.auto_ready:
+            # Advance to ready with backward notification & S3 zero-retention shredding
+            req = PrintReadyRequest(
+                pickup_counter="Counter 1 (Main)",
+                staff_notes="Printed via Xerox WorkCentre (Counter 1)"
+            )
+            await mark_job_print_ready(job_id, req)
+            audit_logger.log(
+                "ALGORITHM_DECISION",
+                f"Auto-Pilot completed printing for order #{job_id} -> Ready for Pickup at Counter 1",
+                job_id=job_id,
+                details={"action": "auto_printing_to_ready", "pickup_counter": "Counter 1 (Main)"},
+            )
+            return {"action": "auto_ready", "job_id": job_id, "status": "ready"}
+        else:
+            return {"action": "printing_in_progress", "job_id": job_id, "elapsed": elapsed}
+
+    # Stage 3: Auto-Print Highest Priority Queued Job
+    if algo.auto_print:
+        queued_jobs = [j for j in items if j.get("status") == "queued"]
+        if queued_jobs:
+            sorted_queued = sort_jobs_by_priority(queued_jobs, metric=metric)
+            target = sorted_queued[0]
+            job_id = target["job_id"]
+            meta = get_priority_metadata(target, rank=1, metric=metric)
+            note = f"Auto-Pilot: Printing #1 Priority ({meta['priority_reason']}) on Xerox WorkCentre"
+            await dynamo.update_job_fields(
+                job_id,
+                {
+                    "status": "printing",
+                    "updated_at": now_iso,
+                    "notes": note,
+                }
+            )
+            invalidate_jobs_cache()
+            audit_logger.log(
+                "ALGORITHM_DECISION",
+                f"Auto-Pilot dispatched order #{job_id} to Xerox printer (#1 Priority: {meta['priority_reason']})",
+                job_id=job_id,
+                details={"action": "auto_queued_to_printing", "metric": metric, "metadata": meta},
+            )
+            return {"action": "auto_print", "job_id": job_id, "status": "printing", "metadata": meta}
+
+    # Stage 4: Auto-Complete (optional)
+    if algo.auto_complete:
+        ready_jobs = [j for j in items if j.get("status") == "ready"]
+        if ready_jobs:
+            target = ready_jobs[0]
+            job_id = target["job_id"]
+            await update_status(job_id, {"status": "completed", "notes": "Handover completed & archived by Auto-Pilot"})
+            audit_logger.log(
+                "ALGORITHM_DECISION",
+                f"Auto-Pilot finalized and archived order #{job_id}",
+                job_id=job_id,
+                details={"action": "auto_ready_to_completed"},
+            )
+            return {"action": "auto_complete", "job_id": job_id, "status": "completed"}
+
+    return {"action": "idle", "message": "Queue optimal; no pending actions."}
+
+
+async def auto_pilot_worker():
+    """Periodic background worker for automated queue algorithm progression."""
+    while True:
+        try:
+            await asyncio.sleep(3)
+            config = await customizations_manager.get_customizations()
+            if getattr(config, "algorithm", None) and config.algorithm.enabled:
+                await process_autonomous_queue_pipeline(config)
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.warning(f"Auto-pilot worker error: {e}")
+
+
+@app.get("/algorithm/status", tags=["Algorithm"])
+async def get_algorithm_status():
+    """Returns active algorithm configuration, criteria, and queue priority summary."""
+    config = await customizations_manager.get_customizations()
+    algo = getattr(config, "algorithm", QueueAlgorithmConfig())
+    dynamo = DynamoDBClient()
+    items = await dynamo.list_all_jobs(limit=100)
+    items = [j for j in items if not str(j.get("job_id", "")).startswith("_")]
+
+    queued = [j for j in items if j.get("status") == "queued"]
+    sorted_queued = sort_jobs_by_priority(queued, metric=algo.priority_metric)
+    for idx, j in enumerate(sorted_queued, start=1):
+        j["priority_metadata"] = get_priority_metadata(j, rank=idx, metric=algo.priority_metric)
+
+    return {
+        "enabled": algo.enabled,
+        "priority_metric": algo.priority_metric,
+        "auto_advance_intake": algo.auto_advance_intake,
+        "auto_print": algo.auto_print,
+        "auto_ready": algo.auto_ready,
+        "auto_complete": algo.auto_complete,
+        "queued_count": len(queued),
+        "printing_count": len([j for j in items if j.get("status") == "printing"]),
+        "top_priority_order": sorted_queued[0]["job_id"] if sorted_queued else None,
+        "top_priority_metadata": sorted_queued[0].get("priority_metadata") if sorted_queued else None,
+    }
+
+
+@app.post("/algorithm/process-next", tags=["Algorithm"])
+async def trigger_algorithm_next():
+    """Triggers the next automated step of the queue execution pipeline on-demand."""
+    config = await customizations_manager.get_customizations()
+    return await process_autonomous_queue_pipeline(config)
 
 
 @app.get("/analytics/earnings", tags=["Analytics"])

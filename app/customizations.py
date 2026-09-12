@@ -5,8 +5,8 @@ import asyncio
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel, Field
 import boto3
-from botocore.exceptions import ClientError
 from app.config import settings
+from app.algorithm import QueueAlgorithmConfig
 
 logger = logging.getLogger("print_queue_service.customizations")
 
@@ -52,6 +52,10 @@ class StoreCustomizations(BaseModel):
     persona: str = Field(
         default="Friendly, efficient, and student-focused campus Xerox assistant with local Hyderabad warmth. Explains print options clearly, concisely, and patiently.",
         description="Active AI personality and communication tone (default base persona with optional user customization)"
+    )
+    algorithm: QueueAlgorithmConfig = Field(
+        default_factory=QueueAlgorithmConfig,
+        description="Autonomous queue execution and priority ordering algorithm configuration"
     )
     last_updated: Optional[str] = None
 

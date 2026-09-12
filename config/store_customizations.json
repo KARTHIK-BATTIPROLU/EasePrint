@@ -13,5 +13,15 @@
   },
   "uploaded_knowledge_docs": [],
   "custom_rules": "Express turnaround under 10 minutes. For orders above ₹200, free soft binding is provided upon request.",
-  "last_updated": "2026-09-11T23:14:53.601610+00:00"
+  "persona": "Friendly, efficient, and student-focused campus Xerox assistant with local Hyderabad warmth. Explains print options clearly, concisely, and patiently.",
+  "algorithm": {
+    "enabled": true,
+    "priority_metric": "higher_price",
+    "auto_advance_intake": true,
+    "auto_print": true,
+    "auto_ready": true,
+    "auto_complete": false,
+    "print_speed_seconds": 3
+  },
+  "last_updated": "2026-09-12T07:19:38.088655+00:00"
 }
