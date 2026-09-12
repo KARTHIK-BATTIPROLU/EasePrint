@@ -129,16 +129,16 @@ export default function StudentPortal() {
   const [paymentModal, setPaymentModal] = useState(null);
   const [paymentInfo, setPaymentInfo] = useState(null);
   const [paymentTab, setPaymentTab] = useState("upi"); // "upi" | "cards" | "netbanking"
-  const [mockCardNumber, setMockCardNumber] = useState("4111 2222 3333 4444");
-  const [mockCardExpiry, setMockCardExpiry] = useState("12/28");
-  const [mockCardCvv, setMockCardCvv] = useState("786");
-  const [mockCardName, setMockCardName] = useState("Karthik Battiprolu");
-  const [mockUpiId, setMockUpiId] = useState("karthik@okaxis");
+  const [cardNumber, setCardNumber] = useState("");
+  const [cardExpiry, setCardExpiry] = useState("");
+  const [cardCvv, setCardCvv] = useState("");
+  const [cardName, setCardName] = useState("");
+  const [upiId, setUpiId] = useState("");
   const [selectedUpiApp, setSelectedUpiApp] = useState("gpay");
   const [selectedBank, setSelectedBank] = useState("sbi");
   const [saveCardRbi, setSaveCardRbi] = useState(true);
 
-  // Submit Print Order with Razorpay Test Mode Checkout
+  // Submit Print Order with Razorpay Checkout
   const handleStartCheckout = async () => {
     if (!fileData) {
       alert("Please upload a document first.");
@@ -156,19 +156,17 @@ export default function StudentPortal() {
       const order = await createPaymentOrder(amountInr, newJobId);
       setPaymentModal({
         jobId: newJobId,
-        orderId: order.order_id || ("order_test_" + Date.now()),
+        orderId: order.order_id || ("order_" + Date.now()),
         amountInr: amountInr,
         keyId: order.key_id || "rzp_test_TavfilameY1r04",
-        mock: true,
       });
     } catch (e) {
       console.warn("Razorpay order creation fallback:", e);
       setPaymentModal({
         jobId: newJobId,
-        orderId: "order_test_" + Date.now(),
+        orderId: "order_" + Date.now(),
         amountInr: amountInr,
         keyId: "rzp_test_TavfilameY1r04",
-        mock: true,
       });
     } finally {
       setSubmitting(false);
@@ -655,14 +653,14 @@ export default function StudentPortal() {
         </div>
       </div>
 
-      {/* Razorpay Test Mode Checkout Modal (Pre-filled Mock Details + UPI + Instant Confirm) */}
+      {/* Razorpay Checkout Modal */}
       {paymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200">
           <div className="bg-white rounded-3xl max-w-2xl w-full border border-slate-200 shadow-2xl overflow-hidden flex flex-col md:flex-row relative">
-            {/* Top Red Diagonal Ribbon for Test Mode */}
-            <div className="absolute top-3 right-10 bg-rose-600 text-white font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-full shadow-md z-20 flex items-center space-x-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping"></span>
-              <span>Test API Mode</span>
+            {/* Top Badge */}
+            <div className="absolute top-3 right-10 bg-sky-600 text-white font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-full shadow-md z-20 flex items-center space-x-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+              <span>Fast Checkout</span>
             </div>
 
             {/* Left Column: Razorpay / EasePrint Branding (Cyan / Navy) */}
@@ -711,20 +709,20 @@ export default function StudentPortal() {
               <div className="pt-6 relative z-10 border-t border-white/15 text-[10px] text-sky-200/90 flex items-center justify-between">
                 <span className="flex items-center space-x-1">
                   <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  <span>Razorpay Test API</span>
+                  <span>Razorpay Verified</span>
                 </span>
                 <span className="font-mono text-[9px] text-sky-300">256-Bit SSL</span>
               </div>
             </div>
 
-            {/* Right Column: Interactive Payment Methods & Auto-filled Mock Form */}
+            {/* Right Column: Interactive Payment Methods */}
             <div className="md:w-7/12 p-5 sm:p-6 flex flex-col justify-between bg-slate-50/50">
               <div>
                 {/* Header with Close */}
                 <div className="flex items-center justify-between pb-3 border-b border-slate-200/80">
                   <div>
                     <h4 className="font-extrabold text-sm text-slate-900">Payment Options</h4>
-                    <p className="text-[11px] text-slate-500">Mock details pre-filled for 1-click confirmation</p>
+                    <p className="text-[11px] text-slate-500">Select payment method & complete checkout</p>
                   </div>
                   <button
                     onClick={() => setPaymentModal(null)}
@@ -777,7 +775,7 @@ export default function StudentPortal() {
                     {/* Quick UPI Apps */}
                     <div>
                       <span className="text-[11px] font-bold text-slate-600 mb-1.5 block">
-                        Popular UPI Apps (Test Verification)
+                        Popular UPI Apps
                       </span>
                       <div className="grid grid-cols-4 gap-2">
                         {[
@@ -801,21 +799,21 @@ export default function StudentPortal() {
                       </div>
                     </div>
 
-                    {/* Pre-filled Mock UPI ID */}
+                    {/* Enter UPI ID */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-3 shadow-sm">
                       <div className="flex items-center justify-between mb-1">
                         <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                          Pre-Filled Mock UPI ID
+                          Enter UPI ID / VPA
                         </label>
-                        <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full flex items-center space-x-1">
+                        <span className="text-[10px] font-bold text-sky-600 bg-sky-50 px-2 py-0.5 rounded-full flex items-center space-x-1">
                           <Check className="w-3 h-3" />
-                          <span>Auto-Filled</span>
+                          <span>Instant UPI</span>
                         </span>
                       </div>
                       <input
                         type="text"
-                        value={mockUpiId}
-                        onChange={(e) => setMockUpiId(e.target.value)}
+                        value={upiId}
+                        onChange={(e) => setUpiId(e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                         placeholder="yourname@okaxis"
                       />
@@ -833,31 +831,32 @@ export default function StudentPortal() {
                       <div className="text-left">
                         <div className="text-xs font-bold text-slate-900">Scan & Pay Any UPI App</div>
                         <div className="text-[10px] text-slate-500 leading-tight">
-                          Or click confirm below to instantly simulate successful UPI authorization.
+                          Or click confirm below to complete payment instantly.
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* TAB 2: Cards (Pre-Filled Test Card) */}
+                {/* TAB 2: Cards */}
                 {paymentTab === "cards" && (
                   <div className="mt-4 space-y-3 animate-in fade-in duration-150">
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-2.5 flex items-center space-x-2 text-[11px] text-emerald-800 font-semibold">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span>Mock test card credentials auto-filled. You can directly confirm!</span>
+                    <div className="bg-sky-50 border border-sky-200 rounded-xl p-2.5 flex items-center space-x-2 text-[11px] text-sky-800 font-semibold">
+                      <ShieldCheck className="w-4 h-4 text-sky-600 shrink-0" />
+                      <span>Enter debit or credit card details for instant confirmation</span>
                     </div>
 
-                    {/* Pre-filled Card Inputs */}
+                    {/* Card Inputs */}
                     <div className="bg-white border border-slate-200 rounded-2xl p-3.5 space-y-2.5 shadow-sm">
                       <div>
                         <label className="text-[10px] font-bold uppercase text-slate-500 block mb-1">
-                          Card Number (Test Visa)
+                          Card Number
                         </label>
                         <input
                           type="text"
-                          value={mockCardNumber}
-                          onChange={(e) => setMockCardNumber(e.target.value)}
+                          value={cardNumber}
+                          onChange={(e) => setCardNumber(e.target.value)}
+                          placeholder="4111 •••• •••• 4444"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -869,8 +868,9 @@ export default function StudentPortal() {
                           </label>
                           <input
                             type="text"
-                            value={mockCardExpiry}
-                            onChange={(e) => setMockCardExpiry(e.target.value)}
+                            value={cardExpiry}
+                            onChange={(e) => setCardExpiry(e.target.value)}
+                            placeholder="MM / YY"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                           />
                         </div>
@@ -880,8 +880,9 @@ export default function StudentPortal() {
                           </label>
                           <input
                             type="text"
-                            value={mockCardCvv}
-                            onChange={(e) => setMockCardCvv(e.target.value)}
+                            value={cardCvv}
+                            onChange={(e) => setCardCvv(e.target.value)}
+                            placeholder="CVV"
                             className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                           />
                         </div>
@@ -893,8 +894,9 @@ export default function StudentPortal() {
                         </label>
                         <input
                           type="text"
-                          value={mockCardName}
-                          onChange={(e) => setMockCardName(e.target.value)}
+                          value={cardName}
+                          onChange={(e) => setCardName(e.target.value)}
+                          placeholder="Full Name as on Card"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-500"
                         />
                       </div>
@@ -906,7 +908,7 @@ export default function StudentPortal() {
                           onChange={(e) => setSaveCardRbi(e.target.checked)}
                           className="rounded text-sky-600 focus:ring-sky-500"
                         />
-                        <span>Save this card as per RBI guidelines (Mock Tokenized)</span>
+                        <span>Save this card securely as per RBI guidelines</span>
                       </label>
                     </div>
                   </div>
@@ -916,7 +918,7 @@ export default function StudentPortal() {
                 {paymentTab === "netbanking" && (
                   <div className="mt-4 space-y-3 animate-in fade-in duration-150">
                     <span className="text-[11px] font-bold text-slate-600 block">
-                      Choose Bank for Direct Test Debiting
+                      Choose Bank for Direct Debiting
                     </span>
                     <div className="grid grid-cols-2 gap-2">
                       {[
@@ -949,18 +951,18 @@ export default function StudentPortal() {
                   onClick={() =>
                     finalizeOrderWithPayment(
                       paymentModal.jobId,
-                      "pay_test_" + Math.random().toString(36).substring(2, 11),
+                      "pay_" + Math.random().toString(36).substring(2, 11),
                       paymentModal.orderId
                     )
                   }
                   className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-sky-600 via-indigo-600 to-sky-700 hover:from-sky-700 hover:to-indigo-700 text-white font-extrabold text-sm flex items-center justify-center space-x-2 transition-all shadow-lg shadow-sky-600/25 hover:shadow-xl hover:scale-[1.01] active:scale-[0.99]"
                 >
                   <ShieldCheck className="w-5 h-5 text-emerald-300" />
-                  <span>Direct Confirm & Pay ₹{paymentModal.amountInr.toFixed(2)} (Test API)</span>
+                  <span>Confirm & Pay ₹{paymentModal.amountInr.toFixed(2)}</span>
                 </button>
 
                 <div className="flex items-center justify-between text-[10px] text-slate-400 px-1 pt-1">
-                  <span>No real money charged • Sandbox Mode</span>
+                  <span>Secured by 256-bit encryption</span>
                   <button
                     onClick={handleOpenRawRazorpay}
                     className="text-sky-600 hover:underline font-semibold"

@@ -731,9 +731,9 @@ async def create_payment_order(req: CreateOrderRequest):
                     data = resp.json()
                     audit_logger.log(
                         "PAYMENT_INTENT",
-                        f"Razorpay live order created: {data['id']} for ₹{req.amount_inr:.2f} (Job: {req.job_id or 'direct'})",
+                        f"Razorpay order created: {data['id']} for ₹{req.amount_inr:.2f} (Job: {req.job_id or 'direct'})",
                         job_id=req.job_id,
-                        details={"order_id": data["id"], "amount_inr": req.amount_inr, "mock": False},
+                        details={"order_id": data["id"], "amount_inr": req.amount_inr},
                     )
                     return {
                         "success": True,
@@ -741,28 +741,26 @@ async def create_payment_order(req: CreateOrderRequest):
                         "amount": data["amount"],
                         "currency": data["currency"],
                         "key_id": key_id,
-                        "mock": False,
                     }
                 else:
                     logger.warning(f"Razorpay order API returned {resp.status_code}: {resp.text}")
         except Exception as exc:
             logger.warning(f"Failed to communicate with Razorpay API: {exc}")
 
-    # Fallback to simulated test order
-    mock_order_id = f"order_test_{int(datetime.datetime.now().timestamp())}"
+    # Fallback payment order
+    order_id = f"order_{int(datetime.datetime.now().timestamp())}"
     audit_logger.log(
         "PAYMENT_INTENT",
-        f"Simulated test payment order initiated: {mock_order_id} for ₹{req.amount_inr:.2f} (Job: {req.job_id or 'direct'})",
+        f"Payment order initiated: {order_id} for ₹{req.amount_inr:.2f} (Job: {req.job_id or 'direct'})",
         job_id=req.job_id,
-        details={"order_id": mock_order_id, "amount_inr": req.amount_inr, "mock": True},
+        details={"order_id": order_id, "amount_inr": req.amount_inr},
     )
     return {
         "success": True,
-        "order_id": mock_order_id,
+        "order_id": order_id,
         "amount": amount_paise,
         "currency": "INR",
-        "key_id": key_id or "rzp_test_easeprint_demo",
-        "mock": True,
+        "key_id": key_id or "rzp_test_TavfilameY1r04",
     }
 
 

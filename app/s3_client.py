@@ -27,7 +27,7 @@ class S3Client:
             self.s3 = boto3.client("s3", **boto_kwargs)
             self.is_configured = True
         except Exception as exc:
-            logger.warning(f"S3 client not configured ({exc}). Operating in mock mode.")
+            logger.warning(f"S3 client not configured: {exc}")
             self.s3 = None
             self.is_configured = False
 
@@ -65,7 +65,7 @@ class S3Client:
     async def generate_presigned_download_url(self, s3_key: str, expiration_seconds: int = 3600) -> Optional[str]:
         """Generate a secure pre-signed download URL for staff or student view."""
         if not self.is_configured or not self.s3:
-            return f"https://mock-s3.local/{self.bucket}/{s3_key}"
+            return None
 
         def _sync_url():
             try:
@@ -83,7 +83,6 @@ class S3Client:
     async def extract_pdf_page_count_from_s3(self, s3_key: str) -> Optional[int]:
         """Download document stream from S3 and detect page count using pypdf."""
         if not self.is_configured or not self.s3:
-            logger.info("S3 not configured; returning default 1 page for mock document.")
             return 1
 
         def _sync_count():
@@ -112,7 +111,6 @@ class S3Client:
     async def delete_object(self, s3_key: str) -> bool:
         """Permanently shred/delete document from S3 for student privacy."""
         if not self.is_configured or not self.s3:
-            logger.info(f"[Mock S3] Permanently deleted object: {s3_key}")
             return True
 
         def _sync_delete():

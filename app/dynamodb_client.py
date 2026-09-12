@@ -9,9 +9,6 @@ from app.config import settings
 
 logger = logging.getLogger("print_queue_service.dynamodb")
 
-# In-memory fallback dictionary for testing/development when DynamoDB is not available
-_mock_dynamodb_store: Dict[str, Dict[str, Any]] = {}
-
 
 def _sanitize_for_dynamodb(data: Any) -> Any:
     """Recursively convert floats to Decimals for DynamoDB serialization."""
@@ -67,8 +64,7 @@ class DynamoDBClient:
                 pass
         else:
             logger.warning(
-                "DynamoDB is not configured (missing AWS credentials or DYNAMODB_ENDPOINT_URL). "
-                "Operating in in-memory mock mode."
+                "DynamoDB is not configured (missing AWS credentials or DYNAMODB_ENDPOINT_URL)."
             )
             self.dynamodb = None
             self.table = None
@@ -109,7 +105,7 @@ class DynamoDBClient:
     async def get_record_by_job_id(self, job_id: str) -> Optional[Dict[str, Any]]:
         """Fetch a job item by job_id (supports either job_id or userID partition key)."""
         if not self.is_configured or not self.table:
-            return _mock_dynamodb_store.get(job_id)
+            raise RuntimeError("DynamoDB is not configured with AWS credentials.")
 
         def _sync_get():
             try:
@@ -124,13 +120,10 @@ class DynamoDBClient:
 
     async def update_job_fields(self, job_id: str, fields: Dict[str, Any]) -> bool:
         """Update attribute values for a job item."""
-        sanitized_fields = _sanitize_for_dynamodb(fields)
-
         if not self.is_configured or not self.table:
-            if job_id not in _mock_dynamodb_store:
-                _mock_dynamodb_store[job_id] = {"job_id": job_id}
-            _mock_dynamodb_store[job_id].update(fields)
-            logger.info(f"[Mock DynamoDB] Updated job {job_id} with fields: {fields}")
+            raise RuntimeError("DynamoDB is not configured with AWS credentials.")
+
+        sanitized_fields = _sanitize_for_dynamodb(fields)
         # Partition key cannot be updated in DynamoDB
         sanitized_fields = {k: v for k, v in sanitized_fields.items() if k != self.pk_name}
         if not sanitized_fields:
@@ -234,9 +227,7 @@ class DynamoDBClient:
             job_data["expires_at"] = now_epoch + 86400  # 24-hour safety buffer
 
         if not self.is_configured or not self.table:
-            if job_id not in _mock_dynamodb_store:
-                _mock_dynamodb_store[job_id] = dict(job_data)
-            return _mock_dynamodb_store[job_id]
+            raise RuntimeError("DynamoDB is not configured with AWS credentials.")
 
         sanitized = _sanitize_for_dynamodb(job_data)
 
@@ -261,13 +252,14 @@ class DynamoDBClient:
     async def list_all_jobs(self, limit: int = 50) -> list:
         """List all jobs for the Staff Dashboard."""
         if not self.is_configured or not self.table:
-            return list(_mock_dynamodb_store.values())
+            raise RuntimeError("DynamoDB is not configured with AWS credentials.")
 
         def _sync_scan():
             try:
                 response = self.table.scan(Limit=limit)
                 items = response.get("Items", [])
-                return [_deserialize_from_dynamodb(i) for i in items]
+                jobs = [_deserialize_from_dynamodb(i) for i in items]
+                return [j for j in jobs if not str(j.get(self.pk_name, "")).startswith("_")]
             except ClientError as exc:
                 logger.error(f"Error scanning DynamoDB jobs: {exc}")
                 return []
