@@ -39,9 +39,7 @@ class DynamoDBClient:
         self.table_name = settings.DYNAMODB_TABLE_NAME
         self.region = settings.AWS_REGION
         self.endpoint_url = settings.DYNAMODB_ENDPOINT_URL
-        self.is_configured = bool(
-            settings.AWS_ACCESS_KEY_ID or self.endpoint_url
-        )
+        self.is_configured = bool(self.region or self.endpoint_url)
         self._pk_name = "job_id"
 
         if self.is_configured:
